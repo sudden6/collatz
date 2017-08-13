@@ -6,8 +6,7 @@ QMAKE_CFLAGS += -std=c99
 QMAKE_CFLAGS_RELEASE += -Ofast -march=native -mtune=native
 
 SOURCES += \
-    collatz_sieb_multistep.c \
-    collatz_sieb_multistep_kopie.c
+    collatz_sieb_multistep.c
 
 DISTFILES += \
     worktodo.txt

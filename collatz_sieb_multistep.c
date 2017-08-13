@@ -1,5 +1,7 @@
 #include "stdio.h"
 #include<stdlib.h>
+#include <sys/time.h>
+#include <time.h>
 
 // Siebtiefe, bevor einzelne Startzahlen in den übrigbleibenden Restklassen
 // erzuegt werden
@@ -12,12 +14,18 @@
 #define max_nr_of_iterations 2000
 
 // zur anpassung an gcc unter ubuntu
+#ifdef __GCC__
 #define __int32 int
 #define __int64 long long
+#else   // damit die IDE nicht jammert
+#define __int32 int
+#define __int64 long
+#define __int128 long long
+#endif
 
 // File-Handler für Ausgabedateien für betrachtete Reste (cleared) und
 // Kandidatenzahlen (candidate)
-FILE *f_cleared;
+FILE *f_cleared = NULL;
 FILE *f_candidate;
 // bzw. für Einlesen der zu bearbeitenden Reste (worktodo)
 FILE *f_worktodo;
@@ -104,6 +112,13 @@ unsigned __int32 multistep_nr_it_max[1 << ms_depth];
 double multistep_it_f[1 << ms_depth];
 double multistep_it_maxf[1 << ms_depth];
 double multistep_it_minf[1 << ms_depth];
+
+// get the current wall clock time in seconds
+double get_time() {
+  struct timeval tp;
+  gettimeofday(&tp, NULL);
+  return tp.tv_sec + tp.tv_usec / 1000000.0;
+}
 
 // Füllt das 128-Bit-Dreier-Potenz-Array
 void init_potarray()
@@ -1100,7 +1115,7 @@ int resume()
     unsigned __int64 credits;
     unsigned int no_of_cand;
 
-    f_cleared = fopen("cleared.txt","r");
+    //f_cleared = fopen("cleared.txt","r");
     if (f_cleared != NULL)
     {
         int dummy;
@@ -1239,6 +1254,7 @@ int main()
         unsigned __int64 credits;
 
         printf("Test of Residue Classes No. %d -- %d\n\n",idx_min, idx_max);
+        double start_time = get_time();
 
         // Möglichkeit zur Parallelisierung
         #pragma omp parallel for private(i, credits, no_found_candidates) shared(rescnt) schedule(dynamic)
@@ -1254,7 +1270,7 @@ int main()
                 #pragma omp critical
                 {
                     rescnt++;
-                    printf("%4u: Residue Class No. %8u is done.\n",rescnt,i+idx_min);
+                    printf("%4u: Residue Class No. %8u is done. %fs\n", rescnt, i + idx_min, get_time() - start_time);
                     fprintf(f_cleared, "%8u     %10u %15llu %5u\n", i+idx_min, reste_array[i], credits,
                                                                     no_found_candidates);
                     fflush(f_cleared);
@@ -1277,8 +1293,8 @@ int main()
     if (f_worktodo != NULL) fclose(f_worktodo);
 
     // Keine Aufgaben mehr in Datei vorhanden
-    int remove_failed = remove("worktodo.txt");
-    if (remove_failed) printf("Could not delete file 'worktodo.txt'.\n\n");
+    //int remove_failed = remove("worktodo.txt");
+    //if (remove_failed) printf("Could not delete file 'worktodo.txt'.\n\n");
 
 
     printf("press enter to exit.\n");
