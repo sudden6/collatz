@@ -951,54 +951,31 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
     {
         debug_else++;
         //new_rest = 0 * 2^nr_it + rest
-        unsigned __int64  new_rest = rest;
-        unsigned __int128 new_it_rest = it_rest;
-        double new_it_f = it_f;
-        unsigned int new_odd = odd;
-        int laststepodd = (new_it_rest & 1);
+        unsigned __int64  new_rest[2] = {rest, rest + (((unsigned __int32)1) << nr_it)};
+        unsigned __int128 new_it_rest[2] = {it_rest, it_rest + pot3[odd]};
+        double new_it_f[2] = {it_f, it_f};
+        unsigned int new_odd[2] = {odd, odd};
+        unsigned int laststepodd[2] = {(new_it_rest[0] & 1), (new_it_rest[1] & 1)};
 
-        if ( laststepodd == 0)
+        for(int i = 0; i < 2; i++)
         {
-            new_it_rest = new_it_rest >> 1;
-            new_it_f *= 0.5;
-        }
-        else
-        {
-            new_it_rest += (new_it_rest >> 1) + 1;
-            new_it_f *= 1.5;
-            new_odd++;
-        }
 
-
-        if ((new_it_f > 10) || //nachfolgende Bedingung benötigt sieve_depth <= 60
-            (new_it_f * corfactor(new_odd, (unsigned __int64) new_it_rest, laststepodd) > 0.98))
-        {
-            credits += sieve_third_stage(nr_it + 1, new_rest, new_it_rest, new_it_f, new_odd);
+            new_it_rest[i] = new_it_rest[i] >> 1;
+            if (laststepodd[i])
+            {
+                new_it_rest[i] = 2 + (new_it_rest[i] << 1);
+            }
+            new_it_f[i] *= 0.5 + laststepodd[i];
+            new_odd[i] += laststepodd[i];
         }
 
-        //new_rest = 1 * 2^nr_it + rest
-        new_rest = rest + (((unsigned __int32)1) << nr_it); //pot2[nr_it];
-        new_it_rest = it_rest + pot3[odd];
-        new_it_f = it_f;
-        new_odd = odd;
-        laststepodd = (new_it_rest & 1);
-
-        if (laststepodd == 0)
+        for(int i = 0; i < 2; i++)
         {
-            new_it_rest = new_it_rest >> 1;
-            new_it_f *= 0.5;
-        }
-        else
-        {
-            new_it_rest += (new_it_rest >> 1) + 1;
-            new_it_f *= 1.5;
-            new_odd++;
-        }
-
-        if ((new_it_f > 10) || //nachfolgende Bedingung benötigt sieve_depth <= 60
-            (new_it_f * corfactor(new_odd, (unsigned __int64) new_it_rest, laststepodd) > 0.98))
-        {
-            credits += sieve_third_stage(nr_it + 1, new_rest, new_it_rest, new_it_f, new_odd);
+            if ((new_it_f[i] > 10) || //nachfolgende Bedingung benötigt sieve_depth <= 60
+                (new_it_f[i] * corfactor(new_odd[i], (unsigned __int64) new_it_rest[i], laststepodd[i]) > 0.98))
+            {
+                credits += sieve_third_stage(nr_it + 1, new_rest[i], new_it_rest[i], new_it_f[i], new_odd[i]);
+            }
         }
     }
 
