@@ -42,33 +42,26 @@ unsigned int idx_max;
 // vorberechnete Zweier- und Dreier-Potenzen
 unsigned __int128 pot3[64];
 
-const unsigned __int32 pot2_32Bit[32] = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048,
-                                         4096, 8192, 1 << 14, 1 << 15, 1 << 16, 1 << 17,
-                                         1 << 18, 1 << 19, 1 << 20, 1 << 21, 1 << 22, 1 << 23,
-                                         1 << 24, 1 << 25, 1 << 26, 1 << 27, 1 << 28, 1 << 29,
-                                         1 << 30, 1u << 31};
 
-const unsigned __int64 pot2[64]      = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048,
-                                         4096, 8192, 0x4000, 0x8000, 0x10000, 0x20000,
-                                         0x40000, 0x80000, 0x100000, 0x200000, 0x400000,
-                                         0x800000, 0x1000000, 0x2000000, 0x4000000,
-                                         0x8000000llu, 0x10000000llu, 0x20000000llu,
-                                         0x40000000llu, 0x80000000llu, 0x100000000llu,
-                                         0x200000000llu, 0x400000000llu, 0x800000000llu,
-                                         0x1000000000llu, 0x2000000000llu,
-                                         0x4000000000llu, 0x8000000000llu,
-                                         0x1000000000llu << 4, 0x2000000000llu << 4,
-                                         0x4000000000llu << 4, 0x8000000000llu << 4,
-                                         0x1000000000llu << 8, 0x2000000000llu << 8,
-                                         0x4000000000llu << 8, 0x8000000000llu << 8,
-                                         0x1000000000llu << 12, 0x2000000000llu << 12,
-                                         0x4000000000llu << 12, 0x8000000000llu << 12,
-                                         0x1000000000llu << 16, 0x2000000000llu << 16,
-                                         0x4000000000llu << 16, 0x8000000000llu << 16,
-                                         0x1000000000llu << 20, 0x2000000000llu << 20,
-                                         0x4000000000llu << 20, 0x8000000000llu << 20,
-                                         0x1000000000llu << 24, 0x2000000000llu << 24,
-                                         0x4000000000llu << 24, 0x8000000000llu << 24};
+const unsigned __int32 pot3_32Bit[20] = {1, 3, 9, 27, 81, 243, 729,  2187, 6561, 19683,
+                                          59049, 177147, 531441, 1594323, 4782969,
+                                          14348907, 43046721, 129140163, 387420489,
+                                          1162261467};
+
+const unsigned __int64 pot3_64Bit[40]  = {1, 3, 9, 27, 81, 243, 729,  2187, 6561, 19683,
+                                          59049, 177147, 531441, 1594323, 4782969,
+                                          14348907, 43046721, 129140163, 387420489,
+                                          1162261467, 3486784401ull, 10460353203ull,
+                                          31381059609ull, 94143178827ull, 282429536481ull,
+                                          847288609443ull, 2541865828329ull,
+                                          7625597484987ull, 22876792454961ull,
+                                          68630377364883ull, 205891132094649ull,
+                                          617673396283947ull, 1853020188851841ull,
+                                          5559060566555523ull, 16677181699666569ull,
+                                          50031545098999707ull, 150094635296999121ull,
+                                          450283905890997363ull, 1350851717672992089ull,
+                                          4052555153018976267ull};
+
 
 
 #define pot3_32Bit (uint32_t)pot3
@@ -870,7 +863,7 @@ void sieve_first_stage (const int nr_it, const unsigned __int32 rest,
             sieve_first_stage(nr_it + 1, new_rest, new_it_rest, new_it_f, new_odd);
 
         //new_rest = 1 * 2^nr_it + rest
-        new_rest = rest + pot2_32Bit[nr_it];
+        new_rest = rest + (1 << nr_it);//pot2_32Bit[nr_it];
         new_it_rest = it_rest + pot3_64Bit[odd];
         new_it_f = it_f;
         new_odd = odd;
@@ -991,7 +984,7 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
         }
 
         //new_rest = 1 * 2^nr_it + rest
-        new_rest = rest + pot2[nr_it];
+        new_rest = rest + (((unsigned __int32)1) << nr_it); //pot2[nr_it];
         new_it_rest = it_rest + pot3[odd];
         new_it_f = it_f;
         new_odd = odd;
@@ -1059,7 +1052,7 @@ unsigned __int64 sieve_second_stage (const int nr_it, const unsigned __int64 res
         }
 
         //new_rest = 1 * 2^nr_it + rest
-        new_rest = rest + pot2[nr_it];
+        new_rest = rest + (((unsigned __int32)1) << nr_it); //pot2[nr_it];
         new_it_rest = it_rest + pot3_64Bit[odd];
         new_it_f = it_f;
         new_odd = odd;
@@ -1252,7 +1245,7 @@ int main()
             { // Nur, wenn Rest noch nicht abgearbeitet
                 no_found_candidates = 0;
                 credits = sieve_second_stage(sieve_depth_first, reste_array[i], it32_rest[i],
-                                             ((double) pot3_64Bit[it32_odd[i]]) / pot2[sieve_depth_first],
+                                             ((double) pot3_64Bit[it32_odd[i]]) / (1UL << sieve_depth_first),
                                              it32_odd[i]);
 
                 #pragma omp critical
