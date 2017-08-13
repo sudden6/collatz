@@ -921,7 +921,7 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
         unsigned __int128 start;
         unsigned __int128 it;
 
-        int startmod9 = rest % 9;
+        unsigned int startmod9 = rest % 9;
 
         int j;	//Umgruppierung der Reihenfolge nach Amateur
         int k;
