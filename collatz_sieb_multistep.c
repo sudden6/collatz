@@ -932,7 +932,6 @@ const uint128_t nine_times_pot2_sieve_depth =
 // , wenn sie nicht kongruent 2 (mod 3) oder 4 (mod 9) sind, zur weiteren
 // Berechnung der Multistep-Methode übergeben.
 
-
 uint128_t start_arr[MAX_NO_OF_NUMBERS]__attribute__ ((__aligned__(32)));
 uint128_t it_arr[MAX_NO_OF_NUMBERS]__attribute__ ((__aligned__(32)));
 
@@ -1328,6 +1327,7 @@ int main()
     //if (remove_failed) printf("Could not delete file 'worktodo.txt'.\n\n");
 
     printf("chk1: %lu chk2: %lu chk3: %lu chk4: %lu chk5: %f\n", checkpoint1, checkpoint2, checkpoint3, checkpoint4, checkpoint5);
+
     //printf("press enter to exit.\n");
     //getchar();
 
