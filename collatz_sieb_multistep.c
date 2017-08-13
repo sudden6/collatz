@@ -1,5 +1,6 @@
 #include "stdio.h"
 #include<stdlib.h>
+#include<stdint.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -921,6 +922,9 @@ const unsigned __int128 nine_times_pot2_sieve_depth =
 // , wenn sie nicht kongruent 2 (mod 3) oder 4 (mod 9) sind, zur weiteren
 // Berechnung der Multistep-Methode übergeben.
 
+uint64_t debug_if = 0;
+uint64_t debug_else = 0;
+
 unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
                                 const unsigned __int128 it_rest,
                                 const double it_f, const unsigned int odd)
@@ -930,6 +934,7 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
 
     if (nr_it >= sieve_depth)
     {
+        debug_if++;
         // Siebausgang
         // k * 2^sieve_depth + rest --> k * 3^odd + it_rest
         // sinngemäß:
@@ -970,14 +975,15 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
     }
     else
     {
+        debug_else++;
         //new_rest = 0 * 2^nr_it + rest
         unsigned __int64  new_rest = rest;
         unsigned __int128 new_it_rest = it_rest;
         double new_it_f = it_f;
         unsigned int new_odd = odd;
-        int laststepodd = 0;
+        int laststepodd = (new_it_rest & 1);
 
-        if ((new_it_rest & 1) == 0)
+        if ( laststepodd == 0)
         {
             new_it_rest = new_it_rest >> 1;
             new_it_f *= 0.5;
@@ -987,16 +993,13 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
             new_it_rest += (new_it_rest >> 1) + 1;
             new_it_f *= 1.5;
             new_odd++;
-            laststepodd = 1;
         }
 
 
         if ((new_it_f > 10) || //nachfolgende Bedingung benötigt sieve_depth <= 60
-            (new_it_f *
-             corfactor(new_odd, (unsigned __int64) new_it_rest, laststepodd) > 0.98))
+            (new_it_f * corfactor(new_odd, (unsigned __int64) new_it_rest, laststepodd) > 0.98))
         {
-            credits += sieve_third_stage(nr_it + 1, new_rest, new_it_rest,
-                                            new_it_f, new_odd);
+            credits += sieve_third_stage(nr_it + 1, new_rest, new_it_rest, new_it_f, new_odd);
         }
 
         //new_rest = 1 * 2^nr_it + rest
@@ -1004,9 +1007,9 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
         new_it_rest = it_rest + pot3[odd];
         new_it_f = it_f;
         new_odd = odd;
-        laststepodd = 0;
+        laststepodd = (new_it_rest & 1);
 
-        if ((new_it_rest & 1) == 0)
+        if (laststepodd == 0)
         {
             new_it_rest = new_it_rest >> 1;
             new_it_f *= 0.5;
@@ -1016,15 +1019,12 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
             new_it_rest += (new_it_rest >> 1) + 1;
             new_it_f *= 1.5;
             new_odd++;
-            laststepodd = 1;
         }
 
         if ((new_it_f > 10) || //nachfolgende Bedingung benötigt sieve_depth <= 60
-            (new_it_f *
-             corfactor(new_odd, (unsigned __int64) new_it_rest, laststepodd) > 0.98))
+            (new_it_f * corfactor(new_odd, (unsigned __int64) new_it_rest, laststepodd) > 0.98))
         {
-            credits += sieve_third_stage(nr_it + 1, new_rest, new_it_rest,
-                                            new_it_f, new_odd);
+            credits += sieve_third_stage(nr_it + 1, new_rest, new_it_rest, new_it_f, new_odd);
         }
     }
 
@@ -1296,8 +1296,8 @@ int main()
     //int remove_failed = remove("worktodo.txt");
     //if (remove_failed) printf("Could not delete file 'worktodo.txt'.\n\n");
 
-
-    printf("press enter to exit.\n");
+    printf("debug_if: %llu debug_else: %llu\n", debug_if, debug_else);
+    //printf("press enter to exit.\n");
     //getchar();
 
     return 0;
