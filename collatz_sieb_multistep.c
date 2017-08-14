@@ -654,87 +654,59 @@ unsigned int first_multistep(const uint128_t start, const uint128_t number,
 {
     uint64_t res = (uint64_t) number;
     double new_it_f = it_f;
-    double min_f;
-    double max_f;
+    double min_f[3];
+    double max_f[3];
     uint64_t res64 = res;
 
     // fest für 64/ms_depth = 6 implementiert!
     unsigned int small_res[6];
 
-    small_res[0] = res64 & ((1 << ms_depth) - 1);
-    min_f = new_it_f * multistep_it_minf[small_res[0]];
-    if (min_f <= 0.98) return 1;
-    res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[0]]]
-            + multistep_it_rest[small_res[0]];
-    new_it_f *= multistep_it_f[small_res[0]];
+    for(int i = 0; i < 3; i++)
+    {
+        small_res[i] = res64 & ((1 << ms_depth) - 1);
+        min_f[i] = new_it_f * multistep_it_minf[small_res[i]];
+        res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[i]]]
+                + multistep_it_rest[small_res[i]];
+        new_it_f *= multistep_it_f[small_res[i]];
+    }
 
-    small_res[1] = res64 & ((1 << ms_depth) - 1);
-    min_f = new_it_f * multistep_it_minf[small_res[1]];
-    if (min_f <= 0.98) return 1;
-    res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[1]]]
-            + multistep_it_rest[small_res[1]];
-    new_it_f *= multistep_it_f[small_res[1]];
-
-    small_res[2] = res64 & ((1 << ms_depth) - 1);
-    min_f = new_it_f * multistep_it_minf[small_res[2]];
-    if (min_f <= 0.98) return 1;
-    res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[2]]]
-            + multistep_it_rest[small_res[2]];
-    new_it_f *= multistep_it_f[small_res[2]];
+    if(min_f[0] < 0.98 || min_f[1] < 0.98 || min_f[2] < 0.98)
+    {
+        return 1;
+    }
 
     if (new_it_f < 5e10)
     {
-        small_res[3] = res64 & ((1 << ms_depth) - 1);
-        min_f = new_it_f * multistep_it_minf[small_res[3]];
-        if (min_f <= 0.98) return 1;
-        res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[3]]]
-                + multistep_it_rest[small_res[3]];
-        new_it_f *= multistep_it_f[small_res[3]];
+        for(int i = 0; i < 3; i++)
+        {
+            small_res[i+3] = res64 & ((1 << ms_depth) - 1);
+            min_f[i] = new_it_f * multistep_it_minf[small_res[i+3]];
+            res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[i+3]]]
+                    + multistep_it_rest[small_res[i+3]];
+            new_it_f *= multistep_it_f[small_res[i+3]];
+        }
 
-        small_res[4] = res64 & ((1 << ms_depth) - 1);
-        min_f = new_it_f * multistep_it_minf[small_res[4]];
-        if (min_f <= 0.98) return 1;
-        res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[4]]]
-                + multistep_it_rest[small_res[4]];
-        new_it_f *= multistep_it_f[small_res[4]];
-
-        small_res[5] = res64 & ((1 << ms_depth) - 1);
-        min_f = new_it_f * multistep_it_minf[small_res[5]];
-        if (min_f <= 0.98) return 1;
-        new_it_f *= multistep_it_f[small_res[5]];
+        if(min_f[0] < 0.98 || min_f[1] < 0.98 || min_f[2] < 0.98)
+        {
+            return 1;
+        }
     }
     else
     {
-        small_res[3] = res64 & ((1 << ms_depth) - 1);
-        max_f = new_it_f * multistep_it_maxf[small_res[3]];
-        if (max_f > 1e16) // Kandidat gefunden, nun genaue Nachrechnung, daher hier
-        {				  // keine Fortführung nötig
-            print_candidate(start);
-            return 1;
+        for(int i = 0; i < 3; i++)
+        {
+            small_res[i+3] = res64 & ((1 << ms_depth) - 1);
+            max_f[i] = new_it_f * multistep_it_maxf[small_res[i+3]];
+            res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[i+3]]]
+                + multistep_it_rest[small_res[i+3]];
+            new_it_f *= multistep_it_f[small_res[i+3]];
         }
-        res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[3]]]
-                + multistep_it_rest[small_res[3]];
-        new_it_f *= multistep_it_f[small_res[3]];
 
-        small_res[4] = res64 & ((1 << ms_depth) - 1);
-        max_f = new_it_f * multistep_it_maxf[small_res[4]];
-        if (max_f > 1e16) // Kandidat gefunden, nun genaue Nachrechnung, daher hier
+        if (max_f[0] > 1e16 || max_f[1] > 1e16 || max_f[2] > 1e16) // Kandidat gefunden, nun genaue Nachrechnung, daher hier
         {				  // keine Fortführung nötig
             print_candidate(start);
             return 1;
         }
-        res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[4]]]
-                + multistep_it_rest[small_res[4]];
-        new_it_f *= multistep_it_f[small_res[4]];
-
-        small_res[5] = res64 & ((1 << ms_depth) - 1);
-        max_f = new_it_f * multistep_it_maxf[small_res[5]];
-        if (max_f > 1e16) // Kandidat gefunden, nun genaue Nachrechnung, daher hier
-        {				  // keine Fortführung nötig
-            print_candidate(start);
-            return 1;
-        }
-        new_it_f *= multistep_it_f[small_res[5]];
     }
 
 
