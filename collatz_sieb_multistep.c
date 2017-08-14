@@ -14,14 +14,12 @@
 //Maximale Anzahl an Iterationen vor Abbruch (zur Vermeidung einer Endlosschleife)
 #define max_nr_of_iterations 2000
 
-// zur anpassung an gcc unter ubuntu
 #ifdef __GCC__
-#define __int32 int
-#define __int64 long long
-#else   // damit die IDE nicht jammert
-#define __int32 int
-#define __int64 long
-#define __int128 long long
+#define uint128_t unsigned __int128
+#define int128_t __int128
+#else
+#define uint128_t unsigned long long
+#define int128_t long long
 #endif
 
 // File-Handler für Ausgabedateien für betrachtete Reste (cleared) und
@@ -36,14 +34,14 @@ unsigned int idx_min;
 unsigned int idx_max;
 
 // vorberechnete Zweier- und Dreier-Potenzen
-unsigned __int128 pot3[64];
+uint128_t pot3[64];
 
-const unsigned __int32 pot3_32Bit[20] = {1, 3, 9, 27, 81, 243, 729,  2187, 6561, 19683,
+const uint32_t pot3_32Bit[20] = {1, 3, 9, 27, 81, 243, 729,  2187, 6561, 19683,
                                           59049, 177147, 531441, 1594323, 4782969,
                                           14348907, 43046721, 129140163, 387420489,
                                           1162261467};
 
-const unsigned __int64 pot3_64Bit[40]  = {1, 3, 9, 27, 81, 243, 729,  2187, 6561, 19683,
+const uint64_t pot3_64Bit[40]  = {1, 3, 9, 27, 81, 243, 729,  2187, 6561, 19683,
                                           59049, 177147, 531441, 1594323, 4782969,
                                           14348907, 43046721, 129140163, 387420489,
                                           1162261467, 3486784401ull, 10460353203ull,
@@ -58,7 +56,6 @@ const unsigned __int64 pot3_64Bit[40]  = {1, 3, 9, 27, 81, 243, 729,  2187, 6561
                                           4052555153018976267ull};
 
 
-
 #define sieve_depth_first 32 // <=32
 #define sieve_depth_second 40// <=40
 
@@ -68,22 +65,22 @@ const unsigned __int64 pot3_64Bit[40]  = {1, 3, 9, 27, 81, 243, 729,  2187, 6561
 // http://www.ams.org/journals/mcom/1999-68-225/S0025-5718-99-01031-5/S0025-5718-99-01031-5.pdf
 // Seite 6/14 (Tabelle 1)
 
-unsigned __int32 * reste_array;
-unsigned __int64 * it32_rest;
-unsigned __int32 * it32_odd;
-unsigned __int32 * cleared_res;
+uint32_t * reste_array;
+uint64_t * it32_rest;
+uint32_t * it32_odd;
+uint32_t * cleared_res;
 
 // Anzahl übriger Restklassen nach sieve_depth_first Iterationen
-unsigned __int64 restcnt_it32;
+uint64_t restcnt_it32;
 // Anzahl in einer Restklasse gefundener Kandidaten
 unsigned int no_found_candidates;
 
 #define ms_depth 10 // 9 <= ms_depth <= 10
 
 // Reste-Arrays für Multistep
-unsigned __int32 multistep_it_rest[1 << ms_depth];
-unsigned __int32 multistep_odd[1 << ms_depth];
-unsigned __int32 multistep_nr_it_max[1 << ms_depth];
+uint32_t multistep_it_rest[1 << ms_depth];
+uint32_t multistep_odd[1 << ms_depth];
+uint32_t multistep_nr_it_max[1 << ms_depth];
 double multistep_it_f[1 << ms_depth];
 double multistep_it_maxf[1 << ms_depth];
 double multistep_it_minf[1 << ms_depth];
@@ -98,7 +95,7 @@ double get_time() {
 // Füllt das 128-Bit-Dreier-Potenz-Array
 void init_potarray()
 {
-    unsigned __int128 p3 = 1;
+    uint128_t p3 = 1;
     unsigned int i = 0;
 
     for ( ; i < 64; i++)
@@ -110,9 +107,9 @@ void init_potarray()
 
 // Gibt Nummer der Restklasse einer Startzahl im
 // betrachteten Intervall zurück; andernfalls -1
-int nr_residue_class(const unsigned __int128 start)
+int nr_residue_class(const uint128_t start)
 {
-    unsigned __int32 startres32 = start;
+    uint_fast32_t startres32 = start;
 
     int i;
     for (i = 0; i < idx_max-idx_min; i++)
@@ -127,7 +124,7 @@ int nr_residue_class(const unsigned __int128 start)
 
 // Bidschirm-Ausgabe int128 im Dezimalformat
 // jeweils 6 Ziffern durch Kommata getrennt
-void printf_128(unsigned __int128 number)
+void printf_128(uint128_t number)
 {
     int digit[42];
     int cnt = 0;
@@ -154,7 +151,7 @@ void printf_128(unsigned __int128 number)
 // Ausrichtung.
 # define mindigits_start  20
 # define mindigits_record 39
-void fprintf_128(unsigned __int128 number, int mindigits)
+void fprintf_128(uint128_t number, int mindigits)
 {
     int digit[42];
     int cnt = 0;
@@ -179,10 +176,10 @@ void fprintf_128(unsigned __int128 number, int mindigits)
 }
 
 //Berechnet Anzahl Binärstellen; übernommen von gonz
-unsigned int bitnum(const unsigned __int128 myvalue)
+unsigned int bitnum(const uint128_t myvalue)
 {
     int erg=1;
-    unsigned __int128 comp=2;
+    uint128_t comp=2;
     while (myvalue>=comp)
     {
         erg++;
@@ -192,13 +189,13 @@ unsigned int bitnum(const unsigned __int128 myvalue)
 }
 
 // Nachrechnen eines Rekords und Ausgabe; nach gonz
-void print_candidate(const unsigned __int128 start)
+void print_candidate(const uint128_t start)
 {
     //Anzahl gefundener Kandidaten um 1 hochzählen
     no_found_candidates++;
 
-    unsigned __int128 myrecord=0;
-    unsigned __int128 myvalue=start;
+    uint128_t myrecord=0;
+    uint128_t myvalue=start;
     unsigned int it = 0;
 
    while ((myvalue>=start) && (it < max_nr_of_iterations))
@@ -245,7 +242,7 @@ void print_candidate(const unsigned __int128 start)
 // laststepodd = 1 <==> Zahl entstand durch (3x+1)/2-Schritt. Dann muss
 // der Fall Zahl == 2 (mod 3) nicht untersucht werden, da dies bei
 // der Vorgängerzahl schon getan wurde.
-double corfactor(const unsigned int odd, const unsigned __int64 it_rest, const int laststepodd)
+double corfactor(const unsigned int odd, const uint64_t it_rest, const int laststepodd)
 {
     const unsigned int rest = it_rest % 729;
 
@@ -406,14 +403,14 @@ void init_multistep()
 // Rekursionsaufruf zu starten. Dies geschieht in zwei Etappen, in denen je 3 * ms_depth
 // Iterationen zusammengefasst und gemeinsam berechnet werden.
 
-unsigned int multistep(const unsigned __int128 start, const unsigned __int128 number,
-                        const double it_f, const unsigned __int32 nr_it)
+unsigned int multistep(const uint128_t start, const uint128_t number,
+                        const double it_f, const uint_fast32_t nr_it)
 {
-    unsigned __int64 res = (unsigned __int64) number;
+    uint64_t res = (uint64_t) number;
     double new_it_f = it_f;
     double min_f;
     double max_f;
-    unsigned __int64 res64 = res;
+    uint64_t res64 = res;
 
     // fest für 64/ms_depth = 6 implementiert!
     unsigned int small_res[6];
@@ -582,25 +579,25 @@ unsigned int multistep(const unsigned __int128 start, const unsigned __int128 nu
         // mit   uebertrag[0] = (c*3^p_0 + it_rest[0]) >> m
         // und   uebertrag[1] = ((b*3^p_0 + uebertrag[0])* 3^p_1 + it_rest[1]) >> m
 
-        unsigned __int32 res32 = ((unsigned __int32) res) >> ms_depth;
-        unsigned __int32 c = res32 & ((1 << ms_depth) - 1);
+        uint_fast32_t res32 = ((uint_fast32_t) res) >> ms_depth;
+        uint_fast32_t c = res32 & ((1 << ms_depth) - 1);
         res32 = res32 >> ms_depth;
-        unsigned __int32 b = res32 & ((1 << ms_depth) - 1);
+        uint_fast32_t b = res32 & ((1 << ms_depth) - 1);
 
-        unsigned __int32 uebertrag_0 = (c * pot3_32Bit[multistep_odd[small_res[0]]]
+        uint_fast32_t uebertrag_0 = (c * pot3_32Bit[multistep_odd[small_res[0]]]
                                        + multistep_it_rest[small_res[0]]) >> ms_depth;
 
-        unsigned __int32 uebertrag_1 = b * pot3_32Bit[multistep_odd[small_res[0]]]
+        uint_fast32_t uebertrag_1 = b * pot3_32Bit[multistep_odd[small_res[0]]]
                                        + uebertrag_0;
 
-        unsigned __int64 uebertrag = ((unsigned __int64) uebertrag_1
+        uint64_t uebertrag = ((uint64_t) uebertrag_1
                                        * pot3_32Bit[multistep_odd[small_res[1]]]
                                        + multistep_it_rest[small_res[1]]) >> ms_depth;
 
         uebertrag *= pot3_32Bit[multistep_odd[small_res[2]]]; //uebertrag[1]*3^p_2
         uebertrag +=  multistep_it_rest[small_res[2]];        //uebertrag[1]*3^p_2 + it_rest[2]
 
-        unsigned __int128 int_nr = number >> (3 * ms_depth);  //a
+        uint128_t int_nr = number >> (3 * ms_depth);  //a
 
         int_nr *= pot3_64Bit[  multistep_odd[small_res[0]] 	  //a*3^(p_0+p_1+p_2)
                              + multistep_odd[small_res[1]]
@@ -610,7 +607,7 @@ unsigned int multistep(const unsigned __int128 start, const unsigned __int128 nu
 
 
 
-        res32 = ((unsigned __int32) int_nr) >> ms_depth;
+        res32 = ((uint_fast32_t) int_nr) >> ms_depth;
         c = res32 & ((1 << ms_depth) - 1);
         res32 = res32 >> ms_depth;
         b = res32 & ((1 << ms_depth) - 1);
@@ -621,14 +618,14 @@ unsigned int multistep(const unsigned __int128 start, const unsigned __int128 nu
         uebertrag_1 = b * pot3_32Bit[multistep_odd[small_res[3]]]
                       + uebertrag_0;
 
-        uebertrag = ((unsigned __int64) uebertrag_1
+        uebertrag = ((uint64_t) uebertrag_1
                       * pot3_32Bit[multistep_odd[small_res[4]]]
                       + multistep_it_rest[small_res[4]]) >> ms_depth;
 
         uebertrag *= pot3_32Bit[multistep_odd[small_res[5]]]; //uebertrag[1]*3^p_2
         uebertrag +=  multistep_it_rest[small_res[5]];        //uebertrag[1]*3^p_2 + it_rest[2]
 
-        unsigned __int128 new_nr = int_nr >> (3 * ms_depth);  //a
+        uint128_t new_nr = int_nr >> (3 * ms_depth);  //a
 
         new_nr *= pot3_64Bit[  multistep_odd[small_res[3]] 	  //a*3^(p_0+p_1+p_2)
                              + multistep_odd[small_res[4]]
@@ -652,14 +649,14 @@ unsigned int multistep(const unsigned __int128 start, const unsigned __int128 nu
 
 
 //Erster Multistep ohne Maximums-Prüfung in den ersten 30 Iterationen; nach Amateur
-unsigned int first_multistep(const unsigned __int128 start, const unsigned __int128 number,
-                                const double it_f, const unsigned __int32 nr_it)
+unsigned int first_multistep(const uint128_t start, const uint128_t number,
+                                const double it_f, const uint_fast32_t nr_it)
 {
-    unsigned __int64 res = (unsigned __int64) number;
+    uint64_t res = (uint64_t) number;
     double new_it_f = it_f;
     double min_f;
     double max_f;
-    unsigned __int64 res64 = res;
+    uint64_t res64 = res;
 
     // fest für 64/ms_depth = 6 implementiert!
     unsigned int small_res[6];
@@ -743,25 +740,25 @@ unsigned int first_multistep(const unsigned __int128 start, const unsigned __int
 
     //if (min_f > 0.98)
     {
-        unsigned __int32 res32 = ((unsigned __int32) res) >> ms_depth;
-        unsigned __int32 c = res32 & ((1 << ms_depth) - 1);
+        uint_fast32_t res32 = ((uint_fast32_t) res) >> ms_depth;
+        uint_fast32_t c = res32 & ((1 << ms_depth) - 1);
         res32 = res32 >> ms_depth;
-        unsigned __int32 b = res32 & ((1 << ms_depth) - 1);
+        uint_fast32_t b = res32 & ((1 << ms_depth) - 1);
 
-        unsigned __int32 uebertrag_0 = (c * pot3_32Bit[multistep_odd[small_res[0]]]
+        uint_fast32_t uebertrag_0 = (c * pot3_32Bit[multistep_odd[small_res[0]]]
                                        + multistep_it_rest[small_res[0]]) >> ms_depth;
 
-        unsigned __int32 uebertrag_1 = b * pot3_32Bit[multistep_odd[small_res[0]]]
+        uint_fast32_t uebertrag_1 = b * pot3_32Bit[multistep_odd[small_res[0]]]
                                        + uebertrag_0;
 
-        unsigned __int64 uebertrag = ((unsigned __int64) uebertrag_1
+        uint64_t uebertrag = ((uint64_t) uebertrag_1
                                        * pot3_32Bit[multistep_odd[small_res[1]]]
                                        + multistep_it_rest[small_res[1]]) >> ms_depth;
 
         uebertrag *= pot3_32Bit[multistep_odd[small_res[2]]]; //uebertrag[1]*3^p_2
         uebertrag +=  multistep_it_rest[small_res[2]];        //uebertrag[1]*3^p_2 + it_rest[2]
 
-        unsigned __int128 int_nr = number >> (3 * ms_depth);  //a
+        uint128_t int_nr = number >> (3 * ms_depth);  //a
 
         int_nr *= pot3_64Bit[  multistep_odd[small_res[0]] 	  //a*3^(p_0+p_1+p_2)
                              + multistep_odd[small_res[1]]
@@ -771,7 +768,7 @@ unsigned int first_multistep(const unsigned __int128 start, const unsigned __int
 
 
 
-        res32 = ((unsigned __int32) int_nr) >> ms_depth;
+        res32 = ((uint_fast32_t) int_nr) >> ms_depth;
         c = res32 & ((1 << ms_depth) - 1);
         res32 = res32 >> ms_depth;
         b = res32 & ((1 << ms_depth) - 1);
@@ -782,14 +779,14 @@ unsigned int first_multistep(const unsigned __int128 start, const unsigned __int
         uebertrag_1 = b * pot3_32Bit[multistep_odd[small_res[3]]]
                       + uebertrag_0;
 
-        uebertrag = ((unsigned __int64) uebertrag_1
+        uebertrag = ((uint64_t) uebertrag_1
                       * pot3_32Bit[multistep_odd[small_res[4]]]
                       + multistep_it_rest[small_res[4]]) >> ms_depth;
 
         uebertrag *= pot3_32Bit[multistep_odd[small_res[5]]]; //uebertrag[1]*3^p_2
         uebertrag +=  multistep_it_rest[small_res[5]];        //uebertrag[1]*3^p_2 + it_rest[2]
 
-        unsigned __int128 new_nr = int_nr >> (3 * ms_depth);  //a
+        uint128_t new_nr = int_nr >> (3 * ms_depth);  //a
 
         new_nr *= pot3_64Bit[  multistep_odd[small_res[3]] 	  //a*3^(p_0+p_1+p_2)
                              + multistep_odd[small_res[4]]
@@ -810,9 +807,9 @@ unsigned int first_multistep(const unsigned __int128 start, const unsigned __int
 // die noch zu betrachten ist, um Eins hochgezählt, sodass nach dem Ende der init-
 // Methode dieser Wert die Anzahl aller dieser Restklassen mod 2^sieve_depth_first
 // angibt.
-void sieve_first_stage (const int nr_it, const unsigned __int32 rest,
-                        const unsigned __int64 it_rest,
-                        const double it_f, const unsigned int odd)
+void sieve_first_stage (const int nr_it, const uint_fast32_t rest,
+                        const uint64_t it_rest,
+                        const double it_f, const uint_fast32_t odd)
 {
     if (nr_it >= sieve_depth_first)
     {
@@ -828,10 +825,10 @@ void sieve_first_stage (const int nr_it, const unsigned __int32 rest,
     else
     {
         //new_rest = 0 * 2^nr_it + rest
-        unsigned __int32 new_rest = rest;
-        unsigned __int64 new_it_rest = it_rest;
+        uint_fast32_t new_rest = rest;
+        uint64_t new_it_rest = it_rest;
         double new_it_f = it_f;
-        unsigned int new_odd = odd;
+        uint_fast32_t new_odd = odd;
         int laststepodd = 0;
 
         if ((new_it_rest & 1) == 0)
@@ -875,7 +872,7 @@ void sieve_first_stage (const int nr_it, const unsigned __int32 rest,
     }
 }
 
-const int testmod9[90] = {1, 1, 0, 1, 0, 0, 1, 1, 0, // Um Verzweigungen nach startmod9 >=9 zu vermeiden
+const uint_fast32_t testmod9[90] = {1, 1, 0, 1, 0, 0, 1, 1, 0, // Um Verzweigungen nach startmod9 >=9 zu vermeiden
                           1, 1, 0, 1, 0, 0, 1, 1, 0,
                           1, 1, 0, 1, 0, 0, 1, 1, 0,
                           1, 1, 0, 1, 0, 0, 1, 1, 0,
@@ -887,9 +884,9 @@ const int testmod9[90] = {1, 1, 0, 1, 0, 0, 1, 1, 0, // Um Verzweigungen nach st
                           1, 1, 0, 1, 0, 0, 1, 1, 0};
 
 const int pot2mod9 = (1 << (sieve_depth % 6)) % 9;
-const unsigned __int128 pot2_sieve_depth = (((unsigned __int128) 1) << 31) << (sieve_depth - 31);
-const unsigned __int128 nine_times_pot2_sieve_depth =
-                                           (((unsigned __int128) 9) << 31) << (sieve_depth - 31);
+const uint128_t pot2_sieve_depth = (((uint128_t) 1) << 31) << (sieve_depth - 31);
+const uint128_t nine_times_pot2_sieve_depth =
+                                           (((uint128_t) 9) << 31) << (sieve_depth - 31);
 
 // Siebt Reste von Iteration sieve_depth_second bis sieve_depth (40 bis 58)
 // Für die übrigbleibenen Restklassen werden alle Zahlen bis 87*2^60 erzeugt und
@@ -899,9 +896,9 @@ const unsigned __int128 nine_times_pot2_sieve_depth =
 uint64_t debug_if = 0;
 uint64_t debug_else = 0;
 
-unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
-                                const unsigned __int128 it_rest,
-                                const double it_f, const unsigned int odd)
+unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
+                                const uint128_t it_rest,
+                                const double it_f, const uint_fast32_t odd)
 {
     // Zählt, wie oft in den Multisteps die teuren 128-Bit-Nachrechnungen durchgeführt werden
     unsigned int credits = 0;
@@ -915,13 +912,13 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
         // for (k = 0; k < 2^(67-sieve_depth); k++)
         //   {Teste Startzahl k * 2^sieve_depth + rest}
 
-        unsigned __int128 start_0 = rest;
-        unsigned __int128 it_0 = it_rest;
+        uint128_t start_0 = rest;
+        uint128_t it_0 = it_rest;
 
-        unsigned __int128 start;
-        unsigned __int128 it;
+        uint128_t start;
+        uint128_t it;
 
-        unsigned int startmod9 = rest % 9;
+        uint_fast32_t startmod9 = rest % 9;
 
         int j;	//Umgruppierung der Reihenfolge nach Amateur
         int k;
@@ -951,11 +948,11 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
     {
         debug_else++;
         //new_rest = 0 * 2^nr_it + rest
-        unsigned __int64  new_rest[2] = {rest, rest + (((unsigned __int32)1) << nr_it)};
-        unsigned __int128 new_it_rest[2] = {it_rest, it_rest + pot3[odd]};
+        uint64_t  new_rest[2] = {rest, rest + (((uint_fast32_t)1) << nr_it)};
+        uint128_t new_it_rest[2] = {it_rest, it_rest + pot3[odd]};
         double new_it_f[2] = {it_f, it_f};
-        unsigned int new_odd[2] = {odd, odd};
-        unsigned int laststepodd[2] = {(new_it_rest[0] & 1), (new_it_rest[1] & 1)};
+        uint_fast32_t new_odd[2] = {odd, odd};
+        uint_fast32_t laststepodd[2] = {(new_it_rest[0] & 1), (new_it_rest[1] & 1)};
 
         for(int i = 0; i < 2; i++)
         {
@@ -972,7 +969,7 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
         for(int i = 0; i < 2; i++)
         {
             if ((new_it_f[i] > 10) || //nachfolgende Bedingung benötigt sieve_depth <= 60
-                (new_it_f[i] * corfactor(new_odd[i], (unsigned __int64) new_it_rest[i], laststepodd[i]) > 0.98))
+                (new_it_f[i] * corfactor(new_odd[i], (uint64_t) new_it_rest[i], laststepodd[i]) > 0.98))
             {
                 credits += sieve_third_stage(nr_it + 1, new_rest[i], new_it_rest[i], new_it_f[i], new_odd[i]);
             }
@@ -983,11 +980,11 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
 }
 
 // Siebt Reste von Iteration sieve_depth_first bis Iteration sieve_depth_second (32 bis 40)
-unsigned __int64 sieve_second_stage (const int nr_it, const unsigned __int64 rest,
-                                     const unsigned __int64 it_rest,
-                                     const double it_f, const unsigned int odd)
+uint64_t sieve_second_stage (const int nr_it, const uint64_t rest,
+                                     const uint64_t it_rest,
+                                     const double it_f, const uint_fast32_t odd)
 {
-    unsigned __int64 credits = 0;
+    uint64_t credits = 0;
 
     if (nr_it >= sieve_depth_second)
     {
@@ -996,8 +993,8 @@ unsigned __int64 sieve_second_stage (const int nr_it, const unsigned __int64 res
     else
     {
         //new_rest = 0 * 2^nr_it + rest
-        unsigned __int64 new_rest = rest;
-        unsigned __int64 new_it_rest = it_rest;
+        uint64_t new_rest = rest;
+        uint64_t new_it_rest = it_rest;
         double new_it_f = it_f;
         unsigned int new_odd = odd;
         int laststepodd = 0;
@@ -1022,7 +1019,7 @@ unsigned __int64 sieve_second_stage (const int nr_it, const unsigned __int64 res
         }
 
         //new_rest = 1 * 2^nr_it + rest
-        new_rest = rest + (((unsigned __int32)1) << nr_it); //pot2[nr_it];
+        new_rest = rest + (((uint_fast32_t)1) << nr_it); //pot2[nr_it];
         new_it_rest = it_rest + pot3_64Bit[odd];
         new_it_f = it_f;
         new_odd = odd;
@@ -1061,10 +1058,10 @@ int resume()
     char string3[40];
     char string4[20];
 
-    unsigned __int32 i;
-    unsigned __int32 rest;
-    unsigned __int64 credits;
-    unsigned int no_of_cand;
+    uint_fast32_t i;
+    uint_fast32_t rest;
+    uint64_t credits;
+    uint_fast32_t no_of_cand;
 
     //f_cleared = fopen("cleared.txt","r");
     if (f_cleared != NULL)
@@ -1176,17 +1173,17 @@ int main()
 
     while (worktodo()) // Solang zeilenweise je eine Arbeitsaufgabe eingelesen werden kann
     {
-        unsigned __int32 i;
+        uint_fast32_t i;
         unsigned int rescnt = 0;
 
         // Anzahl in diesem Durchlauf zu untersuchender Restklassen
         unsigned int size = idx_max - idx_min;
 
         //Speicher-Allokation für Ausgabe nach erstem Siebschritt
-        reste_array = malloc(size * sizeof(unsigned __int32));
-        it32_rest   = malloc(size * sizeof(unsigned __int64));
-        it32_odd    = malloc(size * sizeof(unsigned __int32));
-        cleared_res = calloc(size,  sizeof(unsigned __int32));
+        reste_array = malloc(size * sizeof(uint32_t));
+        it32_rest   = malloc(size * sizeof(uint64_t));
+        it32_odd    = malloc(size * sizeof(uint32_t));
+        cleared_res = calloc(size,  sizeof(uint32_t));
 
         if ((reste_array == NULL) || (it32_rest == NULL) || (it32_odd == NULL) || (cleared_res == NULL))
         {
@@ -1202,7 +1199,7 @@ int main()
         // Initialisierung des Siebs
         init();
 
-        unsigned __int64 credits;
+        uint64_t credits;
 
         printf("Test of Residue Classes No. %d -- %d\n\n",idx_min, idx_max);
         double start_time = get_time();
@@ -1215,7 +1212,7 @@ int main()
             { // Nur, wenn Rest noch nicht abgearbeitet
                 no_found_candidates = 0;
                 credits = sieve_second_stage(sieve_depth_first, reste_array[i], it32_rest[i],
-                                             ((double) pot3_64Bit[it32_odd[i]]) / (1UL << sieve_depth_first),
+                                             ((double) pot3_64Bit[it32_odd[i]]) / (((uint64_t)1) << sieve_depth_first),
                                              it32_odd[i]);
 
                 #pragma omp critical
