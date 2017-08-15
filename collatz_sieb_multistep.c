@@ -14,9 +14,11 @@
 //Maximale Anzahl an Iterationen vor Abbruch (zur Vermeidung einer Endlosschleife)
 #define max_nr_of_iterations 2000
 
+typedef __uint128_t uint128_t;
+
+
 #ifdef __BUILD
-#define uint128_t unsigned __int128
-#define int128_t __int128
+//typedef uint128_t unsigned __int128
 #else
 #define uint128_t unsigned long long
 #define int128_t long long
@@ -897,18 +899,18 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
                 for(uint_fast32_t first_ms_cnt = 0; first_ms_cnt < count; first_ms_cnt++)
                 {
                     double new_it_f = it_f;
-                    uint64_t res64 = (uint64_t) (start_arr[first_ms_cnt]);
-                    uint64_t small_res[3];
+                    uint64_t res64 = ((uint128_t) UINT64_MAX) & (start_arr[first_ms_cnt]);
+                    uint64_t small_res;
 
                     for(uint_fast32_t precalc_idx = 0; precalc_idx < PRECALC_NR; precalc_idx++)
                     {
                         uint_fast32_t mark_idx = precalc_idx+(first_ms_cnt*PRECALC_NR);
 
-                        small_res[precalc_idx] = res64 & ((1 << ms_depth) - 1);
-                        marks[mark_idx] = new_it_f * multistep_it_minf[small_res[precalc_idx]];
-                        res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[precalc_idx]]]
-                                + multistep_it_rest[small_res[precalc_idx]];
-                        new_it_f *= multistep_it_f[small_res[precalc_idx]];
+                        small_res = res64 & ((1 << ms_depth) - 1);
+                        marks[mark_idx] = new_it_f * multistep_it_minf[small_res];
+                        res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res]]
+                                + multistep_it_rest[small_res];
+                        new_it_f *= multistep_it_f[small_res];
 
                     }
                  }
@@ -1232,7 +1234,7 @@ int main()
     //int remove_failed = remove("worktodo.txt");
     //if (remove_failed) printf("Could not delete file 'worktodo.txt'.\n\n");
 
-    printf("debug_if: %llu debug_else: %llu\n", debug_if, debug_else);
+    printf("debug_if: %lu debug_else: %lu\n", debug_if, debug_else);
     //printf("press enter to exit.\n");
     //getchar();
 
