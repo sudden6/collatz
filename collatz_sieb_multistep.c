@@ -643,19 +643,32 @@ unsigned int first_multistep(const uint128_t start, const uint128_t number,
     // fest für 64/ms_depth = 6 implementiert!
     unsigned int small_res[6];
 
-    for(int i = 0; i < 3; i++)
+    small_res[0] = res64 & ((1 << ms_depth) - 1);
+    res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[0]]]
+            + multistep_it_rest[small_res[0]];
+    new_it_f *= multistep_it_f[small_res[0]];
+    small_res[1] = res64 & ((1 << ms_depth) - 1);
+    res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[1]]]
+            + multistep_it_rest[small_res[1]];
+    new_it_f *= multistep_it_f[small_res[1]];
+    small_res[2] = res64 & ((1 << ms_depth) - 1);
+    //min_f[2] = new_it_f * multistep_it_minf[small_res[2]];
+    res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[2]]]
+            + multistep_it_rest[small_res[2]];
+    new_it_f *= multistep_it_f[small_res[2]];
+
+    /*for(int i = 0; i < 3; i++)
     {
         small_res[i] = res64 & ((1 << ms_depth) - 1);
-        //min_f[i] = new_it_f * multistep_it_minf[small_res[i]];
+        min_f[i] = new_it_f * multistep_it_minf[small_res[i]];
         res64 = (res64 >> ms_depth) * pot3_64Bit[multistep_odd[small_res[i]]]
                 + multistep_it_rest[small_res[i]];
         new_it_f *= multistep_it_f[small_res[i]];
-    }
-    /*
-    if(min_f[2] < 0.98)
+    }*/
+    /*if(min_f[2] < 0.98)
     {
         return 1;
-    }*/
+    }//*/
 
     if (new_it_f < 5e10)
     {
@@ -887,7 +900,7 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
                 // maximal 39 durchlaeufe +1 fuer parallelisierung
                 uint128_t start_arr[40];
                 uint128_t it_arr[40];
-                double marks[40*PRECALC_NR];
+                uint32_t marks[40];
                 uint_fast32_t count = 0;
 
                 // fuelle arrays, maximal 39 durchlaeufe
@@ -908,16 +921,17 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
                     double new_it_f[2] = {it_f, it_f};
                     uint64_t res64[2] = {(uint64_t) it_arr[first_ms_cnt],(uint64_t) it_arr[first_ms_cnt*2]} ;
                     uint64_t small_res[2];
+                    uint32_t mark_l[2] = {0, 0};
 
                     for(uint_fast32_t precalc_idx = 0; precalc_idx < PRECALC_NR; precalc_idx++)
                     {
-                        uint_fast32_t mark_idx[] = {precalc_idx+(first_ms_cnt*PRECALC_NR),
-                                                    precalc_idx+(first_ms_cnt*PRECALC_NR*2)};
+                        //uint_fast32_t mark_idx[] = {precalc_idx+(first_ms_cnt*PRECALC_NR),
+                        //                            precalc_idx+(first_ms_cnt*PRECALC_NR*2)};
 
                         small_res[0] = res64[0] & ((1 << ms_depth) - 1);
                         small_res[1] = res64[1] & ((1 << ms_depth) - 1);
-                        marks[mark_idx[0]] = new_it_f[0] * multistep_it_minf[small_res[0]];
-                        marks[mark_idx[1]] = new_it_f[1] * multistep_it_minf[small_res[1]];
+                        mark_l[0] |= new_it_f[0] * multistep_it_minf[small_res[0]] <= 0.98;
+                        mark_l[1] |= new_it_f[1] * multistep_it_minf[small_res[1]] <= 0.98;
                         res64[0] = (res64[0] >> ms_depth) * pot3_64Bit[multistep_odd[small_res[0]]]
                                  + multistep_it_rest[small_res[0]];
                         res64[1] = (res64[1] >> ms_depth) * pot3_64Bit[multistep_odd[small_res[1]]]
@@ -925,16 +939,18 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
                         new_it_f[0] *= multistep_it_f[small_res[0]];
                         new_it_f[1] *= multistep_it_f[small_res[1]];
                     }
+                    marks[first_ms_cnt] = mark_l[0];
+                    marks[first_ms_cnt*2] = mark_l[1];
                  }
                 for(uint_fast32_t candidate_idx = 0; candidate_idx < count; candidate_idx++)
                 {
-                    uint_fast32_t call_needed = 0;
+                    //uint_fast32_t call_needed = 0;
 
-                    for(uint_fast32_t mark_nr = 0; mark_nr < PRECALC_NR; mark_nr++)
+                    /*for(uint_fast32_t mark_nr = 0; mark_nr < PRECALC_NR; mark_nr++)
                     {
                         call_needed = call_needed || (marks[PRECALC_NR*candidate_idx+mark_nr] <= 0.98);
-                    }
-                    if(!call_needed)
+                    }*/
+                    if(!marks[candidate_idx])
                     {
                         credits += first_multistep(start_arr[candidate_idx], it_arr[candidate_idx], it_f, sieve_depth);
                         debug_if++;
