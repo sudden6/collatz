@@ -899,7 +899,7 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
                 for(uint_fast32_t first_ms_cnt = 0; first_ms_cnt < count; first_ms_cnt++)
                 {
                     double new_it_f = it_f;
-                    uint64_t res64 = ((uint128_t) UINT64_MAX) & (start_arr[first_ms_cnt]);
+                    uint64_t res64 = (uint64_t) it_arr[first_ms_cnt];
                     uint64_t small_res;
 
                     for(uint_fast32_t precalc_idx = 0; precalc_idx < PRECALC_NR; precalc_idx++)
@@ -916,13 +916,13 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
                  }
                 for(uint_fast32_t candidate_idx = 0; candidate_idx < count; candidate_idx++)
                 {
-                    uint_fast32_t call_needed = 1;
+                    uint_fast32_t call_needed = 0;
 
                     for(uint_fast32_t mark_nr = 0; mark_nr < PRECALC_NR; mark_nr++)
                     {
-                        call_needed = call_needed && (marks[PRECALC_NR*candidate_idx+mark_nr] > 0.98);
+                        call_needed = call_needed || (marks[PRECALC_NR*candidate_idx+mark_nr] <= 0.98);
                     }
-                    if(call_needed)
+                    if(!call_needed)
                     {
                         credits += first_multistep(start_arr[candidate_idx], it_arr[candidate_idx], it_f, sieve_depth);
                         debug_if++;
