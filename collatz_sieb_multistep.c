@@ -14,14 +14,8 @@
 //Maximale Anzahl an Iterationen vor Abbruch (zur Vermeidung einer Endlosschleife)
 #define max_nr_of_iterations 2000
 
-// zur anpassung an gcc unter ubuntu
-#ifdef __GCC__
-#define uint128_t unsigned __int128
-#define int128_t __int128
-#else
-#define uint128_t unsigned long long
-#define int128_t long long
-#endif
+typedef __uint128_t uint128_t;
+typedef __int128_t int128_t;
 
 // File-Handler für Ausgabedateien für betrachtete Reste (cleared) und
 // Kandidatenzahlen (candidate)
