@@ -15,14 +15,14 @@
 #define max_nr_of_iterations 2000
 
 // zur anpassung an gcc unter ubuntu
-#ifdef __GCC__
-#define __int32 int
-#define __int64 long long
-#else   // damit die IDE nicht jammert
+//#ifdef __GCC__
+//#define __int32 int
+//#define __int64 long long
+//#else   // damit die IDE nicht jammert
 #define __int32 int
 #define __int64 long
 #define __int128 long long
-#endif
+//#endif
 
 // File-Handler für Ausgabedateien für betrachtete Reste (cleared) und
 // Kandidatenzahlen (candidate)
@@ -30,6 +30,9 @@ FILE *f_cleared = NULL;
 FILE *f_candidate;
 // bzw. für Einlesen der zu bearbeitenden Reste (worktodo)
 FILE *f_worktodo;
+
+uint64_t debug_if = 0;
+uint64_t debug_else = 0;
 
 // globale Variablen für Start und Ende des Bereichs der zu bearbeitenden Reste
 unsigned int idx_min;
@@ -711,6 +714,8 @@ unsigned int first_multistep(const unsigned __int128 start, const unsigned __int
             + multistep_it_rest[small_res[2]];
     new_it_f *= multistep_it_f[small_res[2]];
 
+    debug_if++;
+
     if (new_it_f < 5e10)
     {
         small_res[3] = res64 & ((1 << ms_depth) - 1);
@@ -922,9 +927,6 @@ const unsigned __int128 nine_times_pot2_sieve_depth =
 // , wenn sie nicht kongruent 2 (mod 3) oder 4 (mod 9) sind, zur weiteren
 // Berechnung der Multistep-Methode übergeben.
 
-uint64_t debug_if = 0;
-uint64_t debug_else = 0;
-
 unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
                                 const unsigned __int128 it_rest,
                                 const double it_f, const unsigned int odd)
@@ -934,7 +936,6 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
 
     if (nr_it >= sieve_depth)
     {
-        debug_if++;
         // Siebausgang
         // k * 2^sieve_depth + rest --> k * 3^odd + it_rest
         // sinngemäß:
