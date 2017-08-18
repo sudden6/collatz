@@ -807,7 +807,6 @@ unsigned int first_multistep_parallel2(const uint128_t* start, const uint128_t* 
 
     // need 6 steps of recalculating, no checks needed, since we are already here
 
-    debug_if++;
     uint64_t small_res_arr[6];
     uint64_t res = (uint64_t) (*number);
     uint64_t res64_local = res;
@@ -891,21 +890,27 @@ unsigned int first_multistep_parallel(const uint128_t* start, const uint128_t* n
     uint64_t res64_arr[MAX_ITERATIONS];
     double new_it_f_arr[MAX_ITERATIONS];
     //double min_f_arr[MAX_ITERATIONS];
-    uint_fast8_t mark_min_arr[MAX_ITERATIONS];  // test vs 32/64Bit
+    uint_fast8_t mark_min_arr[MAX_ITERATIONS];  // test vs 32/64Bit, must be initialized to zero
 
     const uint32_t parallel_factor = 3;
 
+
+
     // nur nötig um einfach verschiedene parallelisierungsgrade zu testen, sollte vom Compiler wegoptimiert werden
-    // sehr kritische Schleife
     for(uint32_t i = 0; i < MAX_ITERATIONS; i++)
     {
         new_it_f_arr[i] = it_f;
-        res64_arr[i] = (uint64_t) (*number);
+        res64_arr[i] = (uint64_t) number[i]; // out of bounds read, but data is thrown away anyway
+        mark_min_arr[i] = 0;
     }
+
+    uint64_t debug_cnt = 0;
+
 
     // Durchlaufe alle startwerte
     for(uint_fast32_t ms_para_idx = 0; ms_para_idx < MAX_ITERATIONS; ms_para_idx += parallel_factor)
     {
+        debug_cnt++;
         uint64_t small_res[parallel_factor];
         //uint64_t res64[parallel_factor];
         //double new_it_f[parallel_factor];
@@ -938,19 +943,27 @@ unsigned int first_multistep_parallel(const uint128_t* start, const uint128_t* n
             MULTISTEP3(1, ms_para_idx+1);
             MULTISTEP3(2, ms_para_idx+2);
 
-            MULTISTEP4(0, ms_para_idx*1);
-            MULTISTEP4(1, ms_para_idx*2);
-            MULTISTEP4(2, ms_para_idx*3);
+            MULTISTEP4(0, ms_para_idx+0);
+            MULTISTEP4(1, ms_para_idx+1);
+            MULTISTEP4(2, ms_para_idx+2);
         }
+    }
+
+    if(debug_cnt != 13)
+    {
+        printf("error\n");
     }
 
 
 
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_count; ms_idx++)
     {
+        debug_else++;
+
         if(!mark_min_arr[ms_idx])
         {
-            credits += first_multistep_parallel2(&(start[ms_idx]), &(number[ms_idx]), &(new_it_f_arr[ms_idx]), nr_it, 1, 1, res64_arr[ms_idx]);
+            debug_if++;
+            //credits += first_multistep_parallel2(&(start[ms_idx]), &(number[ms_idx]), &(new_it_f_arr[ms_idx]), nr_it, 1, 1, res64_arr[ms_idx]);
         }
     }
     return credits;
@@ -1086,7 +1099,7 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
 
                 uint128_t start_arr[MAX_ITERATIONS];
                 uint128_t it_arr[MAX_ITERATIONS];
-                uint32_t ms_start_count = 0;
+                uint_fast32_t ms_start_count = 0;
 
                 // executed 6x with 39 iterations and 3x with 38 iterations
                 for (k=0; 9 * k + j < 87 * (1 << (60 - sieve_depth)); k++)
@@ -1109,7 +1122,6 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
     }
     else
     {
-        debug_else++;
         //new_rest = 0 * 2^nr_it + rest
         uint64_t  new_rest[2] = {rest, rest + (((uint64_t)1) << nr_it)};
         uint128_t new_it_rest[2] = {it_rest, it_rest + pot3[odd]};
