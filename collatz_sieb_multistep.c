@@ -889,8 +889,7 @@ unsigned int first_multistep_parallel(const uint128_t* start, const uint128_t* n
     unsigned int credits = 1;
     uint64_t res64_arr[MAX_ITERATIONS];
     double new_it_f_arr[MAX_ITERATIONS];
-    //double min_f_arr[MAX_ITERATIONS];
-    uint_fast8_t mark_min_arr[MAX_ITERATIONS];  // test vs 32/64Bit, must be initialized to zero
+    uint_fast8_t mark_min_arr[MAX_ITERATIONS];  // must be initialized to zero
 
     const uint32_t parallel_factor = 3;
 
@@ -904,25 +903,22 @@ unsigned int first_multistep_parallel(const uint128_t* start, const uint128_t* n
         mark_min_arr[i] = 0;
     }
 
-    // Durchlaufe alle startwerte
-    for(uint_fast32_t ms_para_idx = 0; ms_para_idx < MAX_ITERATIONS; ms_para_idx += parallel_factor)
-    {
-        uint64_t small_res[parallel_factor];
-        //uint64_t res64[parallel_factor];
-        //double new_it_f[parallel_factor];
-        //uint_fast8_t mark[parallel_factor];
-
-        // berechne small_res
+    // berechne small_res
 #define MULTISTEP1(LOCAL_IDX, GLOBAL_IDX) small_res[LOCAL_IDX] = res64_arr[GLOBAL_IDX] & ((1 << ms_depth) - 1)
-        // markiere Wertunterschreitungen
+    // markiere Wertunterschreitungen
 #define MULTISTEP2(LOCAL_IDX, GLOBAL_IDX) mark_min_arr[GLOBAL_IDX] |= new_it_f_arr[GLOBAL_IDX] * multistep_it_minf[small_res[LOCAL_IDX]] <= 0.98;
-        // berechne res64
+    // berechne res64
 #define MULTISTEP3(LOCAL_IDX, GLOBAL_IDX) res64_arr[GLOBAL_IDX] = (res64_arr[GLOBAL_IDX] >> ms_depth) \
-                                                            * pot3_64Bit[multistep_odd[small_res[LOCAL_IDX]]] \
-                                                            + multistep_it_rest[small_res[LOCAL_IDX]]
-        // berechne new_it_f
+                                                        * pot3_64Bit[multistep_odd[small_res[LOCAL_IDX]]] \
+                                                        + multistep_it_rest[small_res[LOCAL_IDX]]
+    // berechne new_it_f
 #define MULTISTEP4(LOCAL_IDX, GLOBAL_IDX) new_it_f_arr[GLOBAL_IDX] *= multistep_it_f[small_res[LOCAL_IDX]]
 
+    // Durchlaufe alle startwerte, arbeiten
+    for(uint_fast32_t ms_para_idx = 0; ms_para_idx < MAX_ITERATIONS; ms_para_idx += parallel_factor)
+    {
+
+        uint64_t small_res[parallel_factor];
 
         // führe drei multistep operationen ohne überprüfung aus
         for(uint_fast32_t ms_it = 0; ms_it < 3; ms_it++)
@@ -930,18 +926,23 @@ unsigned int first_multistep_parallel(const uint128_t* start, const uint128_t* n
             MULTISTEP1(0, ms_para_idx+0);
             MULTISTEP1(1, ms_para_idx+1);
             MULTISTEP1(2, ms_para_idx+2);
+            //MULTISTEP1(3, ms_para_idx+3);
 
             MULTISTEP2(0, ms_para_idx+0);
             MULTISTEP2(1, ms_para_idx+1);
             MULTISTEP2(2, ms_para_idx+2);
+            //MULTISTEP2(3, ms_para_idx+3);
+
 
             MULTISTEP3(0, ms_para_idx+0);
             MULTISTEP3(1, ms_para_idx+1);
             MULTISTEP3(2, ms_para_idx+2);
+            //MULTISTEP3(3, ms_para_idx+3);
 
             MULTISTEP4(0, ms_para_idx+0);
             MULTISTEP4(1, ms_para_idx+1);
             MULTISTEP4(2, ms_para_idx+2);
+            //MULTISTEP4(3, ms_para_idx+3);
         }
     }
 
