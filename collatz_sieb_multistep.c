@@ -904,13 +904,9 @@ unsigned int first_multistep_parallel(const uint128_t* start, const uint128_t* n
         mark_min_arr[i] = 0;
     }
 
-    uint64_t debug_cnt = 0;
-
-
     // Durchlaufe alle startwerte
     for(uint_fast32_t ms_para_idx = 0; ms_para_idx < MAX_ITERATIONS; ms_para_idx += parallel_factor)
     {
-        debug_cnt++;
         uint64_t small_res[parallel_factor];
         //uint64_t res64[parallel_factor];
         //double new_it_f[parallel_factor];
@@ -925,7 +921,7 @@ unsigned int first_multistep_parallel(const uint128_t* start, const uint128_t* n
                                                             * pot3_64Bit[multistep_odd[small_res[LOCAL_IDX]]] \
                                                             + multistep_it_rest[small_res[LOCAL_IDX]]
         // berechne new_it_f
-#define MULTISTEP4(LOCAL_IDX, GLOBAL_IDX) new_it_f_arr[GLOBAL_IDX] *= multistep_it_f[LOCAL_IDX]
+#define MULTISTEP4(LOCAL_IDX, GLOBAL_IDX) new_it_f_arr[GLOBAL_IDX] *= multistep_it_f[small_res[LOCAL_IDX]]
 
 
         // führe drei multistep operationen ohne überprüfung aus
@@ -949,12 +945,6 @@ unsigned int first_multistep_parallel(const uint128_t* start, const uint128_t* n
         }
     }
 
-    if(debug_cnt != 13)
-    {
-        printf("error\n");
-    }
-
-
 
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_count; ms_idx++)
     {
@@ -963,7 +953,7 @@ unsigned int first_multistep_parallel(const uint128_t* start, const uint128_t* n
         if(!mark_min_arr[ms_idx])
         {
             debug_if++;
-            //credits += first_multistep_parallel2(&(start[ms_idx]), &(number[ms_idx]), &(new_it_f_arr[ms_idx]), nr_it, 1, 1, res64_arr[ms_idx]);
+            credits += first_multistep_parallel2(&(start[ms_idx]), &(number[ms_idx]), &(new_it_f_arr[ms_idx]), nr_it, 1, 1, res64_arr[ms_idx]);
         }
     }
     return credits;
