@@ -32,8 +32,8 @@ unsigned int idx_max;
 // vorberechnete Zweier- und Dreier-Potenzen
 uint128_t pot3[64];
 
-uint64_t debug_if = 0;
-uint64_t debug_else = 0;
+uint64_t checkpoint1 = 0;   // counts how many candidates are still alive after 3 multistep iterations
+uint64_t checkpoint2 = 0;   // counts how many candidates are still alive after 6 multistep iterations
 
 #define pot3_32Bit (uint32_t)pot3
 #define pot3_64Bit (uint64_t)pot3
@@ -757,7 +757,6 @@ unsigned int first_multistep(const uint128_t start, const uint128_t number,
 // currently working sequentially
 unsigned int first_multistep_parallel2(const uint128_t* start, const uint128_t* number,
                                        const double *it_f, const uint_fast32_t nr_it,
-                                       uint_fast32_t cand_count, uint32_t MAX_ITERATIONS,
                                        uint64_t res64)
 {
     //uint64_t res = (uint64_t) number;
@@ -781,7 +780,7 @@ unsigned int first_multistep_parallel2(const uint128_t* start, const uint128_t* 
             new_it_f *= multistep_it_f[small_res];
         }
 
-        if(min_f[0] < 0.98 || min_f[1] < 0.98 || min_f[2] < 0.98)
+        if(min_f[0] <= 0.98 || min_f[1] <= 0.98 || min_f[2] <= 0.98)
         {
             return 1;
         }
@@ -804,7 +803,7 @@ unsigned int first_multistep_parallel2(const uint128_t* start, const uint128_t* 
         }
     }
 
-
+    checkpoint2++;
     // need 6 steps of recalculating, no checks needed, since we are already here
 
     uint64_t small_res_arr[6];
@@ -907,16 +906,10 @@ unsigned int first_multistep_parallel(uint128_t* start, uint128_t* number,
 #define MULTISTEP3(LOCAL_IDX, GLOBAL_IDX) res64_arr[GLOBAL_IDX] = (res64_arr[GLOBAL_IDX] >> ms_depth) \
                                                         * pot3_64Bit[multistep_odd[small_res[LOCAL_IDX]]] \
                                                         + multistep_it_rest[small_res[LOCAL_IDX]]
-    // berechne res64
-#define MULTISTEP3A(LOCAL_IDX, GLOBAL_R_IDX, GLOBAL_W_IDX) res64_arr[GLOBAL_W_IDX] = (res64_arr[GLOBAL_R_IDX] >> ms_depth) \
-                                                        * pot3_64Bit[multistep_odd[small_res[LOCAL_IDX]]] \
-                                                        + multistep_it_rest[small_res[LOCAL_IDX]]
     // berechne new_it_f
 #define MULTISTEP4(LOCAL_IDX, GLOBAL_IDX) new_it_f_arr[GLOBAL_IDX] *= multistep_it_f[small_res[LOCAL_IDX]]
     // berechne new_it_f, it_f aus übergabeparameter
 #define MULTISTEP4A(LOCAL_IDX, GLOBAL_IDX) new_it_f_arr[GLOBAL_IDX] = it_f * multistep_it_f[small_res[LOCAL_IDX]]
-    // berechne new_it_f, andere lese und schreib addresse
-#define MULTISTEP4B(LOCAL_IDX, GLOBAL_R_IDX, GLOBAL_W_IDX) new_it_f_arr[GLOBAL_W_IDX] = new_it_f_arr[GLOBAL_R_IDX] * multistep_it_f[small_res[LOCAL_IDX]]
 
     // Durchlaufe alle startwerte, arbeiten
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_count; ms_idx += PARALLEL_FACTOR)
@@ -1027,6 +1020,8 @@ unsigned int first_multistep_parallel(uint128_t* start, uint128_t* number,
         //MULTISTEP2(6, ms_para_idx+6);
         //MULTISTEP2(7, ms_para_idx+7);
 
+/*
+
         MULTISTEP3(0, ms_idx+0);
         MULTISTEP3(1, ms_idx+1);
         MULTISTEP3(2, ms_idx+2);
@@ -1044,6 +1039,7 @@ unsigned int first_multistep_parallel(uint128_t* start, uint128_t* number,
         //MULTISTEP4(5, ms_para_idx+5);
         //MULTISTEP4(6, ms_para_idx+6);
         //MULTISTEP4(7, ms_para_idx+7);
+        */
     }
 
 
@@ -1051,19 +1047,15 @@ unsigned int first_multistep_parallel(uint128_t* start, uint128_t* number,
     {
         if(!mark_min_arr[ms_idx])
         {
-            start[alive] = start[ms_idx];
-            number[alive] = number[ms_idx];
-            new_it_f_arr[alive] = new_it_f_arr[ms_idx];
-            res64_arr[alive] = res64_arr[ms_idx];
-            alive++;
+            MULTISTEP1(0, ms_idx+0);    // reload small_res
+            MULTISTEP3(0, ms_idx+0);
+            MULTISTEP4(0, ms_idx+0);
+
+            checkpoint1++;
+            credits += first_multistep_parallel2(&(start[ms_idx]), &(number[ms_idx]), &(new_it_f_arr[ms_idx]), nr_it, res64_arr[ms_idx]);
         }
     }
 
-    for(uint_fast32_t ms_idx = 0; ms_idx < alive; ms_idx++)
-    {
-        debug_if++;
-        credits += first_multistep_parallel2(&(start[ms_idx]), &(number[ms_idx]), &(new_it_f_arr[ms_idx]), nr_it, 1, 1, res64_arr[ms_idx]);
-    }
     return credits;
 }
 
@@ -1186,10 +1178,9 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
         int j;	//Umgruppierung der Reihenfolge nach Amateur
         int k;
 
-#define MAX_ITERATIONS  (39*9)
+#define MAX_ITERATIONS  (39)//*9)
         uint128_t start_arr[MAX_ITERATIONS];
         uint128_t it_arr[MAX_ITERATIONS];
-        uint_fast32_t ms_start_count = 0;
 
         for (j = 0; j < 9; j++)
         {
@@ -1197,6 +1188,7 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
             {
                 start = start_0;
                 it    = it_0;
+                uint_fast32_t ms_start_count = 0;
 
                 // executed 6x with 39 iterations and 3x with 38 iterations @sieve_depth 58
                 for (k=0; 9 * k + j < 87 * (1 << (60 - sieve_depth)); k++)
@@ -1209,13 +1201,13 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
                     start += nine_times_pot2_sieve_depth;
                     it    += pot3[odd+2]; // = " ... + 9*pot3[odd]
                 }
+                first_multistep_parallel(start_arr, it_arr, it_f, sieve_depth, ms_start_count, MAX_ITERATIONS);
             }
 
             start_0 += pot2_sieve_depth;
             it_0    += pot3[odd];
             startmod9 += pot2mod9; // startmod9 <= 8 + 9 * 8 < 90
         }
-        first_multistep_parallel(start_arr, it_arr, it_f, sieve_depth, ms_start_count, MAX_ITERATIONS);
     }
     else
     {
@@ -1516,7 +1508,7 @@ int main()
     //int remove_failed = remove("worktodo.txt");
     //if (remove_failed) printf("Could not delete file 'worktodo.txt'.\n\n");
 
-    printf("debug_if: %llu debug_else: %llu\n", debug_if, debug_else);
+    printf("chk1: %llu chk2: %llu\n", checkpoint1, checkpoint2);
     //printf("press enter to exit.\n");
     //getchar();
 
