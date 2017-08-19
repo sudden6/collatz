@@ -882,7 +882,8 @@ unsigned int first_multistep_parallel2(const uint128_t* start, const uint128_t* 
     }
 }
 
-#define PARALLEL_FACTOR 3
+// 4 scheint universell gut zu sein, 5 bringt auf manchen cpus auch noch was
+#define PARALLEL_FACTOR 4
 
 //Erster Multistep ohne Maximums-Prüfung in den ersten 30 Iterationen; nach Amateur
 unsigned int first_multistep_parallel(uint128_t* start, uint128_t* number,
@@ -906,71 +907,143 @@ unsigned int first_multistep_parallel(uint128_t* start, uint128_t* number,
 #define MULTISTEP3(LOCAL_IDX, GLOBAL_IDX) res64_arr[GLOBAL_IDX] = (res64_arr[GLOBAL_IDX] >> ms_depth) \
                                                         * pot3_64Bit[multistep_odd[small_res[LOCAL_IDX]]] \
                                                         + multistep_it_rest[small_res[LOCAL_IDX]]
+    // berechne res64
+#define MULTISTEP3A(LOCAL_IDX, GLOBAL_R_IDX, GLOBAL_W_IDX) res64_arr[GLOBAL_W_IDX] = (res64_arr[GLOBAL_R_IDX] >> ms_depth) \
+                                                        * pot3_64Bit[multistep_odd[small_res[LOCAL_IDX]]] \
+                                                        + multistep_it_rest[small_res[LOCAL_IDX]]
     // berechne new_it_f
 #define MULTISTEP4(LOCAL_IDX, GLOBAL_IDX) new_it_f_arr[GLOBAL_IDX] *= multistep_it_f[small_res[LOCAL_IDX]]
     // berechne new_it_f, it_f aus übergabeparameter
 #define MULTISTEP4A(LOCAL_IDX, GLOBAL_IDX) new_it_f_arr[GLOBAL_IDX] = it_f * multistep_it_f[small_res[LOCAL_IDX]]
+    // berechne new_it_f, andere lese und schreib addresse
+#define MULTISTEP4B(LOCAL_IDX, GLOBAL_R_IDX, GLOBAL_W_IDX) new_it_f_arr[GLOBAL_W_IDX] = new_it_f_arr[GLOBAL_R_IDX] * multistep_it_f[small_res[LOCAL_IDX]]
 
     // Durchlaufe alle startwerte, arbeiten
-    for(uint_fast32_t ms_para_idx = 0; ms_para_idx < cand_count; ms_para_idx += PARALLEL_FACTOR)
+    for(uint_fast32_t ms_idx = 0; ms_idx < cand_count; ms_idx += PARALLEL_FACTOR)
     {
-        MULTISTEP0(0, ms_para_idx+0);
-        MULTISTEP0(1, ms_para_idx+1);
-        MULTISTEP0(2, ms_para_idx+2);
+        MULTISTEP0(0, ms_idx+0);
+        MULTISTEP0(1, ms_idx+1);
+        MULTISTEP0(2, ms_idx+2);
+        MULTISTEP0(3, ms_idx+3);
+        //MULTISTEP0(4, ms_para_idx+4);
+        //MULTISTEP0(5, ms_para_idx+5);
+        //MULTISTEP0(6, ms_para_idx+6);
+        //MULTISTEP0(7, ms_para_idx+7);
 
-        MULTISTEP1(0, ms_para_idx+0);
-        MULTISTEP1(1, ms_para_idx+1);
-        MULTISTEP1(2, ms_para_idx+2);
+        MULTISTEP1(0, ms_idx+0);
+        MULTISTEP1(1, ms_idx+1);
+        MULTISTEP1(2, ms_idx+2);
+        MULTISTEP1(3, ms_idx+3);
+        //MULTISTEP1(4, ms_para_idx+4);
+        //MULTISTEP1(5, ms_para_idx+5);
+        //MULTISTEP1(6, ms_para_idx+6);
+        //MULTISTEP1(7, ms_para_idx+7);
 
-        MULTISTEP2A(0, ms_para_idx+0);
-        MULTISTEP2A(1, ms_para_idx+1);
-        MULTISTEP2A(2, ms_para_idx+2);
+
+        MULTISTEP2A(0, ms_idx+0);
+        MULTISTEP2A(1, ms_idx+1);
+        MULTISTEP2A(2, ms_idx+2);
+        MULTISTEP2A(3, ms_idx+3);
+        //MULTISTEP2A(4, ms_para_idx+4);
+        //MULTISTEP2A(5, ms_para_idx+5);
+        //MULTISTEP2A(6, ms_para_idx+6);
+        //MULTISTEP2A(7, ms_para_idx+7);
 
 
-        MULTISTEP3(0, ms_para_idx+0);
-        MULTISTEP3(1, ms_para_idx+1);
-        MULTISTEP3(2, ms_para_idx+2);
-        //MULTISTEP3(3, ms_para_idx+3);
+        MULTISTEP3(0, ms_idx+0);
+        MULTISTEP3(1, ms_idx+1);
+        MULTISTEP3(2, ms_idx+2);
+        MULTISTEP3(3, ms_idx+3);
+        //MULTISTEP3(4, ms_para_idx+4);
+        //MULTISTEP3(5, ms_para_idx+5);
+        //MULTISTEP3(6, ms_para_idx+6);
+        //MULTISTEP3(7, ms_para_idx+7);
 
-        MULTISTEP4A(0, ms_para_idx+0);
-        MULTISTEP4A(1, ms_para_idx+1);
-        MULTISTEP4A(2, ms_para_idx+2);
-        //MULTISTEP4(3, ms_para_idx+3);
+        MULTISTEP4A(0, ms_idx+0);
+        MULTISTEP4A(1, ms_idx+1);
+        MULTISTEP4A(2, ms_idx+2);
+        MULTISTEP4A(3, ms_idx+3);
+        //MULTISTEP4A(4, ms_para_idx+4);
+        //MULTISTEP4A(5, ms_para_idx+5);
+        //MULTISTEP4A(6, ms_para_idx+6);
+        //MULTISTEP4A(7, ms_para_idx+7);
 
 
         // multistep 2
-        MULTISTEP1(0, ms_para_idx+0);
-        MULTISTEP1(1, ms_para_idx+1);
-        MULTISTEP1(2, ms_para_idx+2);
-        //MULTISTEP1(3, ms_para_idx+3);
+        MULTISTEP1(0, ms_idx+0);
+        MULTISTEP1(1, ms_idx+1);
+        MULTISTEP1(2, ms_idx+2);
+        MULTISTEP1(3, ms_idx+3);
+        //MULTISTEP1(4, ms_para_idx+4);
+        //MULTISTEP1(5, ms_para_idx+5);
+        //MULTISTEP1(6, ms_para_idx+6);
+        //MULTISTEP1(7, ms_para_idx+7);
 
-        MULTISTEP2(0, ms_para_idx+0);
-        MULTISTEP2(1, ms_para_idx+1);
-        MULTISTEP2(2, ms_para_idx+2);
-        //MULTISTEP2(3, ms_para_idx+3);
+        MULTISTEP2(0, ms_idx+0);
+        MULTISTEP2(1, ms_idx+1);
+        MULTISTEP2(2, ms_idx+2);
+        MULTISTEP2(3, ms_idx+3);
+        //MULTISTEP2(4, ms_para_idx+4);
+        //MULTISTEP2(5, ms_para_idx+5);
+        //MULTISTEP2(6, ms_para_idx+6);
+        //MULTISTEP2(7, ms_para_idx+7);
 
 
-        MULTISTEP3(0, ms_para_idx+0);
-        MULTISTEP3(1, ms_para_idx+1);
-        MULTISTEP3(2, ms_para_idx+2);
-        //MULTISTEP3(3, ms_para_idx+3);
+        MULTISTEP3(0, ms_idx+0);
+        MULTISTEP3(1, ms_idx+1);
+        MULTISTEP3(2, ms_idx+2);
+        MULTISTEP3(3, ms_idx+3);
+        //MULTISTEP3(4, ms_para_idx+4);
+        //MULTISTEP3(5, ms_para_idx+5);
+        //MULTISTEP3(6, ms_para_idx+6);
+        //MULTISTEP3(7, ms_para_idx+7);
 
-        MULTISTEP4(0, ms_para_idx+0);
-        MULTISTEP4(1, ms_para_idx+1);
-        MULTISTEP4(2, ms_para_idx+2);
-        //MULTISTEP4(3, ms_para_idx+3);
+        MULTISTEP4(0, ms_idx+0);
+        MULTISTEP4(1, ms_idx+1);
+        MULTISTEP4(2, ms_idx+2);
+        MULTISTEP4(3, ms_idx+3);
+        //MULTISTEP4(4, ms_para_idx+4);
+        //MULTISTEP4(5, ms_para_idx+5);
+        //MULTISTEP4(6, ms_para_idx+6);
+        //MULTISTEP4(7, ms_para_idx+7);
 
-        // multistep 3, unvollständig
+        // multistep 3
 
-        MULTISTEP1(0, ms_para_idx+0);
-        MULTISTEP1(1, ms_para_idx+1);
-        MULTISTEP1(2, ms_para_idx+2);
-        //MULTISTEP1(3, ms_para_idx+3);
+        MULTISTEP1(0, ms_idx+0);
+        MULTISTEP1(1, ms_idx+1);
+        MULTISTEP1(2, ms_idx+2);
+        MULTISTEP1(3, ms_idx+3);
+        //MULTISTEP1(4, ms_para_idx+4);
+        //MULTISTEP1(5, ms_para_idx+5);
+        //MULTISTEP1(6, ms_para_idx+6);
+        //MULTISTEP1(7, ms_para_idx+7);
 
-        MULTISTEP2(0, ms_para_idx+0);
-        MULTISTEP2(1, ms_para_idx+1);
-        MULTISTEP2(2, ms_para_idx+2);
-        //MULTISTEP2(3, ms_para_idx+3);
+        MULTISTEP2(0, ms_idx+0);
+        MULTISTEP2(1, ms_idx+1);
+        MULTISTEP2(2, ms_idx+2);
+        MULTISTEP2(3, ms_idx+3);
+        //MULTISTEP2(4, ms_para_idx+4);
+        //MULTISTEP2(5, ms_para_idx+5);
+        //MULTISTEP2(6, ms_para_idx+6);
+        //MULTISTEP2(7, ms_para_idx+7);
+
+        MULTISTEP3(0, ms_idx+0);
+        MULTISTEP3(1, ms_idx+1);
+        MULTISTEP3(2, ms_idx+2);
+        MULTISTEP3(3, ms_idx+3);
+        //MULTISTEP3(4, ms_para_idx+4);
+        //MULTISTEP3(5, ms_para_idx+5);
+        //MULTISTEP3(6, ms_para_idx+6);
+        //MULTISTEP3(7, ms_para_idx+7);
+
+        MULTISTEP4(0, ms_idx+0);
+        MULTISTEP4(1, ms_idx+1);
+        MULTISTEP4(2, ms_idx+2);
+        MULTISTEP4(3, ms_idx+3);
+        //MULTISTEP4(4, ms_para_idx+4);
+        //MULTISTEP4(5, ms_para_idx+5);
+        //MULTISTEP4(6, ms_para_idx+6);
+        //MULTISTEP4(7, ms_para_idx+7);
     }
 
 
@@ -978,11 +1051,18 @@ unsigned int first_multistep_parallel(uint128_t* start, uint128_t* number,
     {
         if(!mark_min_arr[ms_idx])
         {
-            debug_if++;
-            MULTISTEP3(0, ms_idx);
-            MULTISTEP4(0, ms_idx);
-            credits += first_multistep_parallel2(&(start[ms_idx]), &(number[ms_idx]), &(new_it_f_arr[ms_idx]), nr_it, 1, 1, res64_arr[ms_idx]);
+            start[alive] = start[ms_idx];
+            number[alive] = number[ms_idx];
+            new_it_f_arr[alive] = new_it_f_arr[ms_idx];
+            res64_arr[alive] = res64_arr[ms_idx];
+            alive++;
         }
+    }
+
+    for(uint_fast32_t ms_idx = 0; ms_idx < alive; ms_idx++)
+    {
+        debug_if++;
+        credits += first_multistep_parallel2(&(start[ms_idx]), &(number[ms_idx]), &(new_it_f_arr[ms_idx]), nr_it, 1, 1, res64_arr[ms_idx]);
     }
     return credits;
 }
