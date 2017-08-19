@@ -31,8 +31,8 @@ FILE *f_candidate;
 // bzw. für Einlesen der zu bearbeitenden Reste (worktodo)
 FILE *f_worktodo;
 
-uint64_t debug_if = 0;
-uint64_t debug_else = 0;
+uint64_t checkpoint1 = 0;   // checks how many candidates survive after 3 multistep iterations
+uint64_t checkpoint2 = 0;   // checks how many candidates survive after 6 multistep iterations
 
 // globale Variablen für Start und Ende des Bereichs der zu bearbeitenden Reste
 unsigned int idx_min;
@@ -714,7 +714,7 @@ unsigned int first_multistep(const unsigned __int128 start, const unsigned __int
             + multistep_it_rest[small_res[2]];
     new_it_f *= multistep_it_f[small_res[2]];
 
-    debug_if++;
+    checkpoint1++;
 
     if (new_it_f < 5e10)
     {
@@ -771,6 +771,7 @@ unsigned int first_multistep(const unsigned __int128 start, const unsigned __int
         new_it_f *= multistep_it_f[small_res[5]];
     }
 
+    checkpoint2++;
 
     //if (min_f > 0.98)
     {
@@ -976,7 +977,6 @@ unsigned int sieve_third_stage (const int nr_it, const unsigned __int64 rest,
     }
     else
     {
-        debug_else++;
         //new_rest = 0 * 2^nr_it + rest
         unsigned __int64  new_rest = rest;
         unsigned __int128 new_it_rest = it_rest;
@@ -1297,7 +1297,7 @@ int main()
     //int remove_failed = remove("worktodo.txt");
     //if (remove_failed) printf("Could not delete file 'worktodo.txt'.\n\n");
 
-    printf("debug_if: %llu debug_else: %llu\n", debug_if, debug_else);
+    printf("chk1: %llu chk2: %llu\n", checkpoint1, checkpoint2);
     //printf("press enter to exit.\n");
     //getchar();
 
