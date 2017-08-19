@@ -882,78 +882,105 @@ unsigned int first_multistep_parallel2(const uint128_t* start, const uint128_t* 
     }
 }
 
+#define PARALLEL_FACTOR 3
+
 //Erster Multistep ohne Maximums-Prüfung in den ersten 30 Iterationen; nach Amateur
-unsigned int first_multistep_parallel(const uint128_t* start, const uint128_t* number,
+unsigned int first_multistep_parallel(uint128_t* start, uint128_t* number,
                                 const double it_f, const uint_fast32_t nr_it, uint_fast32_t cand_count, uint32_t MAX_ITERATIONS)
 {
     unsigned int credits = 1;
     uint64_t res64_arr[MAX_ITERATIONS];
     double new_it_f_arr[MAX_ITERATIONS];
     uint_fast8_t mark_min_arr[MAX_ITERATIONS];  // must be initialized to zero
+    uint64_t small_res[PARALLEL_FACTOR];
+    uint_fast32_t alive = 0;
 
-    const uint32_t parallel_factor = 3;
-
-
-
-    // nur nötig um einfach verschiedene parallelisierungsgrade zu testen, sollte vom Compiler wegoptimiert werden
-    for(uint32_t i = 0; i < MAX_ITERATIONS; i++)
-    {
-        new_it_f_arr[i] = it_f;
-        res64_arr[i] = (uint64_t) number[i]; // out of bounds read, but data is thrown away anyway
-        mark_min_arr[i] = 0;
-    }
-
+#define MULTISTEP0(LOCAL_IDX, GLOBAL_IDX) res64_arr[GLOBAL_IDX] = (uint64_t) (number[GLOBAL_IDX])
     // berechne small_res
 #define MULTISTEP1(LOCAL_IDX, GLOBAL_IDX) small_res[LOCAL_IDX] = res64_arr[GLOBAL_IDX] & ((1 << ms_depth) - 1)
     // markiere Wertunterschreitungen
 #define MULTISTEP2(LOCAL_IDX, GLOBAL_IDX) mark_min_arr[GLOBAL_IDX] |= new_it_f_arr[GLOBAL_IDX] * multistep_it_minf[small_res[LOCAL_IDX]] <= 0.98;
+    // markiere Wertunterschreitungen, new_it_f_arr aus übergabeparameter, mark_min_arr als zuweisung
+#define MULTISTEP2A(LOCAL_IDX, GLOBAL_IDX) mark_min_arr[GLOBAL_IDX] = (it_f * multistep_it_minf[small_res[LOCAL_IDX]]) <= 0.98;
     // berechne res64
 #define MULTISTEP3(LOCAL_IDX, GLOBAL_IDX) res64_arr[GLOBAL_IDX] = (res64_arr[GLOBAL_IDX] >> ms_depth) \
                                                         * pot3_64Bit[multistep_odd[small_res[LOCAL_IDX]]] \
                                                         + multistep_it_rest[small_res[LOCAL_IDX]]
     // berechne new_it_f
 #define MULTISTEP4(LOCAL_IDX, GLOBAL_IDX) new_it_f_arr[GLOBAL_IDX] *= multistep_it_f[small_res[LOCAL_IDX]]
+    // berechne new_it_f, it_f aus übergabeparameter
+#define MULTISTEP4A(LOCAL_IDX, GLOBAL_IDX) new_it_f_arr[GLOBAL_IDX] = it_f * multistep_it_f[small_res[LOCAL_IDX]]
 
     // Durchlaufe alle startwerte, arbeiten
-    for(uint_fast32_t ms_para_idx = 0; ms_para_idx < MAX_ITERATIONS; ms_para_idx += parallel_factor)
+    for(uint_fast32_t ms_para_idx = 0; ms_para_idx < cand_count; ms_para_idx += PARALLEL_FACTOR)
     {
+        MULTISTEP0(0, ms_para_idx+0);
+        MULTISTEP0(1, ms_para_idx+1);
+        MULTISTEP0(2, ms_para_idx+2);
 
-        uint64_t small_res[parallel_factor];
+        MULTISTEP1(0, ms_para_idx+0);
+        MULTISTEP1(1, ms_para_idx+1);
+        MULTISTEP1(2, ms_para_idx+2);
 
-        // führe drei multistep operationen ohne überprüfung aus
-        for(uint_fast32_t ms_it = 0; ms_it < 3; ms_it++)
-        {
-            MULTISTEP1(0, ms_para_idx+0);
-            MULTISTEP1(1, ms_para_idx+1);
-            MULTISTEP1(2, ms_para_idx+2);
-            //MULTISTEP1(3, ms_para_idx+3);
-
-            MULTISTEP2(0, ms_para_idx+0);
-            MULTISTEP2(1, ms_para_idx+1);
-            MULTISTEP2(2, ms_para_idx+2);
-            //MULTISTEP2(3, ms_para_idx+3);
+        MULTISTEP2A(0, ms_para_idx+0);
+        MULTISTEP2A(1, ms_para_idx+1);
+        MULTISTEP2A(2, ms_para_idx+2);
 
 
-            MULTISTEP3(0, ms_para_idx+0);
-            MULTISTEP3(1, ms_para_idx+1);
-            MULTISTEP3(2, ms_para_idx+2);
-            //MULTISTEP3(3, ms_para_idx+3);
+        MULTISTEP3(0, ms_para_idx+0);
+        MULTISTEP3(1, ms_para_idx+1);
+        MULTISTEP3(2, ms_para_idx+2);
+        //MULTISTEP3(3, ms_para_idx+3);
 
-            MULTISTEP4(0, ms_para_idx+0);
-            MULTISTEP4(1, ms_para_idx+1);
-            MULTISTEP4(2, ms_para_idx+2);
-            //MULTISTEP4(3, ms_para_idx+3);
-        }
+        MULTISTEP4A(0, ms_para_idx+0);
+        MULTISTEP4A(1, ms_para_idx+1);
+        MULTISTEP4A(2, ms_para_idx+2);
+        //MULTISTEP4(3, ms_para_idx+3);
+
+
+        // multistep 2
+        MULTISTEP1(0, ms_para_idx+0);
+        MULTISTEP1(1, ms_para_idx+1);
+        MULTISTEP1(2, ms_para_idx+2);
+        //MULTISTEP1(3, ms_para_idx+3);
+
+        MULTISTEP2(0, ms_para_idx+0);
+        MULTISTEP2(1, ms_para_idx+1);
+        MULTISTEP2(2, ms_para_idx+2);
+        //MULTISTEP2(3, ms_para_idx+3);
+
+
+        MULTISTEP3(0, ms_para_idx+0);
+        MULTISTEP3(1, ms_para_idx+1);
+        MULTISTEP3(2, ms_para_idx+2);
+        //MULTISTEP3(3, ms_para_idx+3);
+
+        MULTISTEP4(0, ms_para_idx+0);
+        MULTISTEP4(1, ms_para_idx+1);
+        MULTISTEP4(2, ms_para_idx+2);
+        //MULTISTEP4(3, ms_para_idx+3);
+
+        // multistep 3, unvollständig
+
+        MULTISTEP1(0, ms_para_idx+0);
+        MULTISTEP1(1, ms_para_idx+1);
+        MULTISTEP1(2, ms_para_idx+2);
+        //MULTISTEP1(3, ms_para_idx+3);
+
+        MULTISTEP2(0, ms_para_idx+0);
+        MULTISTEP2(1, ms_para_idx+1);
+        MULTISTEP2(2, ms_para_idx+2);
+        //MULTISTEP2(3, ms_para_idx+3);
     }
 
 
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_count; ms_idx++)
     {
-        debug_else++;
-
         if(!mark_min_arr[ms_idx])
         {
             debug_if++;
+            MULTISTEP3(0, ms_idx);
+            MULTISTEP4(0, ms_idx);
             credits += first_multistep_parallel2(&(start[ms_idx]), &(number[ms_idx]), &(new_it_f_arr[ms_idx]), nr_it, 1, 1, res64_arr[ms_idx]);
         }
     }
@@ -1079,6 +1106,11 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
         int j;	//Umgruppierung der Reihenfolge nach Amateur
         int k;
 
+#define MAX_ITERATIONS  (39*9)
+        uint128_t start_arr[MAX_ITERATIONS];
+        uint128_t it_arr[MAX_ITERATIONS];
+        uint_fast32_t ms_start_count = 0;
+
         for (j = 0; j < 9; j++)
         {
             if (testmod9[startmod9])
@@ -1086,13 +1118,7 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
                 start = start_0;
                 it    = it_0;
 
-                const uint32_t MAX_ITERATIONS = 39;
-
-                uint128_t start_arr[MAX_ITERATIONS];
-                uint128_t it_arr[MAX_ITERATIONS];
-                uint_fast32_t ms_start_count = 0;
-
-                // executed 6x with 39 iterations and 3x with 38 iterations
+                // executed 6x with 39 iterations and 3x with 38 iterations @sieve_depth 58
                 for (k=0; 9 * k + j < 87 * (1 << (60 - sieve_depth)); k++)
                 {
                     start_arr[ms_start_count] = start;
@@ -1103,13 +1129,13 @@ unsigned int sieve_third_stage (const int nr_it, const uint64_t rest,
                     start += nine_times_pot2_sieve_depth;
                     it    += pot3[odd+2]; // = " ... + 9*pot3[odd]
                 }
-                first_multistep_parallel(start_arr, it_arr, it_f, sieve_depth, ms_start_count, MAX_ITERATIONS);
             }
 
             start_0 += pot2_sieve_depth;
             it_0    += pot3[odd];
             startmod9 += pot2mod9; // startmod9 <= 8 + 9 * 8 < 90
         }
+        first_multistep_parallel(start_arr, it_arr, it_f, sieve_depth, ms_start_count, MAX_ITERATIONS);
     }
     else
     {
