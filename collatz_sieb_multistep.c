@@ -42,8 +42,10 @@ uint128_t pot3[64];
 #define sieve_depth_first 32 // <=32
 #define sieve_depth_second 40// <=40
 
+#define PARALLEL_FACTOR 4
+
 // maximale anzahl an datensätzen für die first_multistep_parallel methode
-#define MS_PARALLEL_MAX_ITER (39)//*9)
+#define MS_PARALLEL_MAX_ITER (39/* *9*/ + PARALLEL_FACTOR)
 
 // Arrays zum Rausschreiben der Restklassen nach sieve_depth_first Iterationen
 // reicht bis sieve_depth_first = 32;
@@ -637,16 +639,16 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
 unsigned int first_multistep(const uint128_t start, const uint128_t number,
                                 const double it_f, const uint_fast32_t nr_it, uint64_t res64);
 
-#define PARALLEL_FACTOR 4
+
 
 //Erster Multistep ohne Maximums-Prüfung in den ersten 30 Iterationen; nach Amateur
 unsigned int first_multistep_parallel(uint128_t* start, uint128_t* number,
                                 const double it_f, const uint_fast32_t nr_it, uint_fast32_t cand_cnt)
 {
     unsigned int credits = 1;
-    uint64_t res64_arr[MS_PARALLEL_MAX_ITER];
-    double new_it_f_arr[MS_PARALLEL_MAX_ITER];
-    uint_fast8_t mark_arr[MS_PARALLEL_MAX_ITER];
+    uint64_t res64_arr[MS_PARALLEL_MAX_ITER] = {0};
+    double new_it_f_arr[MS_PARALLEL_MAX_ITER] = {0};
+    uint_fast8_t mark_arr[MS_PARALLEL_MAX_ITER] = {0};
     uint_fast32_t alive = 0;
 
 #define MULTISTEP0(LOCAL_IDX, GLOBAL_IDX) res64_ ## LOCAL_IDX = (uint64_t) (number[GLOBAL_IDX])
@@ -1006,7 +1008,7 @@ void sieve_first_stage (const int nr_it, const uint_fast32_t rest,
             sieve_first_stage(nr_it + 1, new_rest, new_it_rest, new_it_f, new_odd);
 
         //new_rest = 1 * 2^nr_it + rest
-        new_rest = rest + (1 << nr_it);//pot2_32Bit[nr_it];
+        new_rest = rest + ((uint64_t)1 << nr_it);//pot2_32Bit[nr_it];
         new_it_rest = it_rest + pot3_64Bit(odd);
         new_it_f = it_f;
         new_odd = odd;
@@ -1072,8 +1074,8 @@ unsigned int sieve_third_stage (const uint64_t nr_it, const uint64_t rest,
         uint128_t start;
         uint128_t it;
 
-        uint128_t start_arr[MS_PARALLEL_MAX_ITER];
-        uint128_t it_arr[MS_PARALLEL_MAX_ITER];
+        uint128_t start_arr[MS_PARALLEL_MAX_ITER] = {0};
+        uint128_t it_arr[MS_PARALLEL_MAX_ITER] = {0};
 
         uint_fast32_t startmod9 = rest % 9;
 
