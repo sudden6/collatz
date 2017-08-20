@@ -33,6 +33,7 @@ FILE *f_worktodo;
 
 uint64_t checkpoint1 = 0;   // checks how many candidates survive after 3 multistep iterations
 uint64_t checkpoint2 = 0;   // checks how many candidates survive after 6 multistep iterations
+uint64_t checkpoint3 = 0;   // checks how often the multistep function is called
 
 // globale Variablen für Start und Ende des Bereichs der zu bearbeitenden Reste
 unsigned int idx_min;
@@ -438,6 +439,7 @@ void init_multistep()
 unsigned int multistep(const unsigned __int128 start, const unsigned __int128 number,
                         const double it_f, const unsigned __int32 nr_it)
 {
+    checkpoint3++;
     unsigned __int64 res = (unsigned __int64) number;
     double new_it_f = it_f;
     double min_f;
@@ -1297,7 +1299,7 @@ int main()
     //int remove_failed = remove("worktodo.txt");
     //if (remove_failed) printf("Could not delete file 'worktodo.txt'.\n\n");
 
-    printf("chk1: %llu chk2: %llu\n", checkpoint1, checkpoint2);
+    printf("chk1: %lu chk2: %lu chk3: %lu\n", checkpoint1, checkpoint2, checkpoint3);
     //printf("press enter to exit.\n");
     //getchar();
 
