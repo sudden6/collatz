@@ -840,7 +840,7 @@ void sieve_first_stage (const int nr_it, const uint_fast32_t rest,
             sieve_first_stage(nr_it + 1, new_rest, new_it_rest, new_it_f, new_odd);
 
         //new_rest = 1 * 2^nr_it + rest
-        new_rest = rest + (1 << nr_it);//pot2_32Bit[nr_it];
+        new_rest = rest + ((uint32_t)1 << nr_it);//pot2_32Bit[nr_it];
         new_it_rest = it_rest + pot3_64Bit[odd];
         new_it_f = it_f;
         new_odd = odd;
