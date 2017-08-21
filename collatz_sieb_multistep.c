@@ -15,14 +15,7 @@
 //Maximale Anzahl an Iterationen vor Abbruch (zur Vermeidung einer Endlosschleife)
 #define max_nr_of_iterations 2000
 
-// zur anpassung an gcc unter ubuntu
-#ifdef __GCC__
-#define uint128_t unsigned __int128
-#define int128_t __int128
-#else
-#define uint128_t unsigned long long
-#define int128_t long long
-#endif
+typedef __uint128_t uint128_t;
 
 // File-Handler für Ausgabedateien für betrachtete Reste (cleared) und
 // Kandidatenzahlen (candidate)
@@ -48,8 +41,10 @@ uint128_t pot3[64];
 #define sieve_depth_first 32 // <=32
 #define sieve_depth_second 40// <=40
 
+#define PARALLEL_FACTOR 4
+
 // maximale anzahl an datensätzen für die first_multistep_parallel methode
-#define MS_PARALLEL_MAX_ITER (39)//*9)
+#define MS_PARALLEL_MAX_ITER (39/* *9*/ + PARALLEL_FACTOR - 1)
 
 // Arrays zum Rausschreiben der Restklassen nach sieve_depth_first Iterationen
 // reicht bis sieve_depth_first = 32;
@@ -643,7 +638,6 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
 unsigned int first_multistep(const uint128_t start, const uint128_t number,
                                 const double it_f, const uint_fast32_t nr_it, uint64_t res64);
 
-#define PARALLEL_FACTOR 4
 
 //Erster Multistep ohne Maximums-Prüfung in den ersten 30 Iterationen; nach Amateur
 unsigned int first_multistep_parallel(uint128_t* start, uint128_t* number,
