@@ -1037,7 +1037,8 @@ void sieve_first_stage (const int nr_it, const uint_fast32_t rest,
     }
 }
 
-const uint_fast32_t testmod9[90] = {1, 1, 0, 1, 0, 0, 1, 1, 0, // Um Verzweigungen nach startmod9 >=9 zu vermeiden
+const uint_fast8_t testmod9[90] = {
+                          1, 1, 0, 1, 0, 0, 1, 1, 0, // Um Verzweigungen nach startmod9 >=9 zu vermeiden
                           1, 1, 0, 1, 0, 0, 1, 1, 0,
                           1, 1, 0, 1, 0, 0, 1, 1, 0,
                           1, 1, 0, 1, 0, 0, 1, 1, 0,
