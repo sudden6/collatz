@@ -41,10 +41,10 @@ uint128_t pot3[64];
 #define sieve_depth_first 32 // <=32
 #define sieve_depth_second 40// <=40
 
-#define PARALLEL_FACTOR 4
+#define MAX_PARALLEL_FACTOR 3   // wird für die speicher reservierungen benutzt
 
 // maximale anzahl an datensätzen für die first_multistep_parallel methode
-#define MS_PARALLEL_MAX_ITER (39/* *9*/ + PARALLEL_FACTOR - 1)
+#define MS_PARALLEL_MAX_ITER (39/* *9*/ + MAX_PARALLEL_FACTOR - 1)
 
 // Arrays zum Rausschreiben der Restklassen nach sieve_depth_first Iterationen
 // reicht bis sieve_depth_first = 32;
@@ -678,125 +678,244 @@ unsigned int first_multistep_parallel(uint128_t* start, uint128_t* number,
 #define MULTISTEP_GLOBAL_TO_LOCAL(LOCAL_IDX, GLOBAL_IDX) res64_ ## LOCAL_IDX = res64_arr[GLOBAL_IDX]; \
                                                          new_it_f_ ## LOCAL_IDX = new_it_f_arr[GLOBAL_IDX];
 
-    MULTISTEP_LOCALS(0);
+    MULTISTEP_LOCALS(0);//*
     MULTISTEP_LOCALS(1);
     MULTISTEP_LOCALS(2);
-    MULTISTEP_LOCALS(3);
+    //MULTISTEP_LOCALS(3);//*/
 
-
-    // Durchlaufe alle startwerte, arbeiten
-    for(uint_fast32_t ms_idx = 0; ms_idx < cand_cnt; ms_idx += PARALLEL_FACTOR)
+    if(cand_cnt == 39)
     {
-        MULTISTEP0(0, ms_idx+0);
-        MULTISTEP0(1, ms_idx+1);
-        MULTISTEP0(2, ms_idx+2);
-        MULTISTEP0(3, ms_idx+3);
-        //MULTISTEP0(4, ms_para_idx+4);
-        //MULTISTEP0(5, ms_para_idx+5);
-        //MULTISTEP0(6, ms_para_idx+6);
-        //MULTISTEP0(7, ms_para_idx+7);
+    // Durchlaufe alle startwerte, arbeite mit 3 auf einmal
+        for(uint_fast32_t ms_idx = 0; ms_idx < cand_cnt; ms_idx += 3)
+        {
+            MULTISTEP0(0, ms_idx+0);
+            MULTISTEP0(1, ms_idx+1);
+            MULTISTEP0(2, ms_idx+2);/*
+            MULTISTEP0(3, ms_idx+3);
+            MULTISTEP0(4, ms_para_idx+4);
+            MULTISTEP0(5, ms_para_idx+5);
+            MULTISTEP0(6, ms_para_idx+6);
+            MULTISTEP0(7, ms_para_idx+7);//*/
 
-        MULTISTEP1(0, ms_idx+0);
-        MULTISTEP1(1, ms_idx+1);
-        MULTISTEP1(2, ms_idx+2);
-        MULTISTEP1(3, ms_idx+3);
-        //MULTISTEP1(4, ms_para_idx+4);
-        //MULTISTEP1(5, ms_para_idx+5);
-        //MULTISTEP1(6, ms_para_idx+6);
-        //MULTISTEP1(7, ms_para_idx+7);
-
-
-        MULTISTEP2A(0, ms_idx+0);
-        MULTISTEP2A(1, ms_idx+1);
-        MULTISTEP2A(2, ms_idx+2);
-        MULTISTEP2A(3, ms_idx+3);
-        //MULTISTEP2A(4, ms_para_idx+4);
-        //MULTISTEP2A(5, ms_para_idx+5);
-        //MULTISTEP2A(6, ms_para_idx+6);
-        //MULTISTEP2A(7, ms_para_idx+7);
+            MULTISTEP1(0, ms_idx+0);
+            MULTISTEP1(1, ms_idx+1);
+            MULTISTEP1(2, ms_idx+2);/*
+            MULTISTEP1(3, ms_idx+3);
+            MULTISTEP1(4, ms_para_idx+4);
+            MULTISTEP1(5, ms_para_idx+5);
+            MULTISTEP1(6, ms_para_idx+6);
+            MULTISTEP1(7, ms_para_idx+7);//*/
 
 
-        MULTISTEP3(0, ms_idx+0);
-        MULTISTEP3(1, ms_idx+1);
-        MULTISTEP3(2, ms_idx+2);
-        MULTISTEP3(3, ms_idx+3);
-        //MULTISTEP3(4, ms_para_idx+4);
-        //MULTISTEP3(5, ms_para_idx+5);
-        //MULTISTEP3(6, ms_para_idx+6);
-        //MULTISTEP3(7, ms_para_idx+7);
-
-        MULTISTEP4A(0, ms_idx+0);
-        MULTISTEP4A(1, ms_idx+1);
-        MULTISTEP4A(2, ms_idx+2);
-        MULTISTEP4A(3, ms_idx+3);
-        //MULTISTEP4A(4, ms_para_idx+4);
-        //MULTISTEP4A(5, ms_para_idx+5);
-        //MULTISTEP4A(6, ms_para_idx+6);
-        //MULTISTEP4A(7, ms_para_idx+7);
+            MULTISTEP2A(0, ms_idx+0);
+            MULTISTEP2A(1, ms_idx+1);
+            MULTISTEP2A(2, ms_idx+2);/*
+            MULTISTEP2A(3, ms_idx+3);
+            MULTISTEP2A(4, ms_para_idx+4);
+            MULTISTEP2A(5, ms_para_idx+5);
+            MULTISTEP2A(6, ms_para_idx+6);
+            MULTISTEP2A(7, ms_para_idx+7);//*/
 
 
-        // multistep 2
-        MULTISTEP1(0, ms_idx+0);
-        MULTISTEP1(1, ms_idx+1);
-        MULTISTEP1(2, ms_idx+2);
-        MULTISTEP1(3, ms_idx+3);
-        //MULTISTEP1(4, ms_para_idx+4);
-        //MULTISTEP1(5, ms_para_idx+5);
-        //MULTISTEP1(6, ms_para_idx+6);
-        //MULTISTEP1(7, ms_para_idx+7);
+            MULTISTEP3(0, ms_idx+0);
+            MULTISTEP3(1, ms_idx+1);
+            MULTISTEP3(2, ms_idx+2);/*
+            MULTISTEP3(3, ms_idx+3);
+            MULTISTEP3(4, ms_para_idx+4);
+            MULTISTEP3(5, ms_para_idx+5);
+            MULTISTEP3(6, ms_para_idx+6);
+            MULTISTEP3(7, ms_para_idx+7);//*/
 
-        MULTISTEP2(0, ms_idx+0);
-        MULTISTEP2(1, ms_idx+1);
-        MULTISTEP2(2, ms_idx+2);
-        MULTISTEP2(3, ms_idx+3);
-        //MULTISTEP2(4, ms_para_idx+4);
-        //MULTISTEP2(5, ms_para_idx+5);
-        //MULTISTEP2(6, ms_para_idx+6);
-        //MULTISTEP2(7, ms_para_idx+7);
+            MULTISTEP4A(0, ms_idx+0);
+            MULTISTEP4A(1, ms_idx+1);
+            MULTISTEP4A(2, ms_idx+2);/*
+            MULTISTEP4A(3, ms_idx+3);
+            MULTISTEP4A(4, ms_para_idx+4);
+            MULTISTEP4A(5, ms_para_idx+5);
+            MULTISTEP4A(6, ms_para_idx+6);
+            MULTISTEP4A(7, ms_para_idx+7);//*/
 
 
-        MULTISTEP3(0, ms_idx+0);
-        MULTISTEP3(1, ms_idx+1);
-        MULTISTEP3(2, ms_idx+2);
-        MULTISTEP3(3, ms_idx+3);
-        //MULTISTEP3(4, ms_para_idx+4);
-        //MULTISTEP3(5, ms_para_idx+5);
-        //MULTISTEP3(6, ms_para_idx+6);
-        //MULTISTEP3(7, ms_para_idx+7);
+            // multistep 2
+            MULTISTEP1(0, ms_idx+0);
+            MULTISTEP1(1, ms_idx+1);
+            MULTISTEP1(2, ms_idx+2);/*
+            MULTISTEP1(3, ms_idx+3);
+            MULTISTEP1(4, ms_para_idx+4);
+            MULTISTEP1(5, ms_para_idx+5);
+            MULTISTEP1(6, ms_para_idx+6);
+            MULTISTEP1(7, ms_para_idx+7);//*/
 
-        MULTISTEP4(0, ms_idx+0);
-        MULTISTEP4(1, ms_idx+1);
-        MULTISTEP4(2, ms_idx+2);
-        MULTISTEP4(3, ms_idx+3);
-        //MULTISTEP4(4, ms_para_idx+4);
-        //MULTISTEP4(5, ms_para_idx+5);
-        //MULTISTEP4(6, ms_para_idx+6);
-        //MULTISTEP4(7, ms_para_idx+7);
+            MULTISTEP2(0, ms_idx+0);
+            MULTISTEP2(1, ms_idx+1);
+            MULTISTEP2(2, ms_idx+2);/*
+            MULTISTEP2(3, ms_idx+3);
+            MULTISTEP2(4, ms_para_idx+4);
+            MULTISTEP2(5, ms_para_idx+5);
+            MULTISTEP2(6, ms_para_idx+6);
+            MULTISTEP2(7, ms_para_idx+7);//*/
 
-        // multistep 3
 
-        MULTISTEP1(0, ms_idx+0);
-        MULTISTEP1(1, ms_idx+1);
-        MULTISTEP1(2, ms_idx+2);
-        MULTISTEP1(3, ms_idx+3);
-        //MULTISTEP1(4, ms_para_idx+4);
-        //MULTISTEP1(5, ms_para_idx+5);
-        //MULTISTEP1(6, ms_para_idx+6);
-        //MULTISTEP1(7, ms_para_idx+7);
+            MULTISTEP3(0, ms_idx+0);
+            MULTISTEP3(1, ms_idx+1);
+            MULTISTEP3(2, ms_idx+2);/*
+            MULTISTEP3(3, ms_idx+3);
+            MULTISTEP3(4, ms_para_idx+4);
+            MULTISTEP3(5, ms_para_idx+5);
+            MULTISTEP3(6, ms_para_idx+6);
+            MULTISTEP3(7, ms_para_idx+7);//*/
 
-        MULTISTEP2(0, ms_idx+0);
-        MULTISTEP2(1, ms_idx+1);
-        MULTISTEP2(2, ms_idx+2);
-        MULTISTEP2(3, ms_idx+3);
-        //MULTISTEP2(4, ms_para_idx+4);
-        //MULTISTEP2(5, ms_para_idx+5);
-        //MULTISTEP2(6, ms_para_idx+6);
-        //MULTISTEP2(7, ms_para_idx+7);
+            MULTISTEP4(0, ms_idx+0);
+            MULTISTEP4(1, ms_idx+1);
+            MULTISTEP4(2, ms_idx+2);/*
+            MULTISTEP4(3, ms_idx+3);
+            MULTISTEP4(4, ms_para_idx+4);
+            MULTISTEP4(5, ms_para_idx+5);
+            MULTISTEP4(6, ms_para_idx+6);
+            MULTISTEP4(7, ms_para_idx+7);//*/
 
-        MULTISTEP_LOCAL_TO_GLOBAL(0, ms_idx+0);
-        MULTISTEP_LOCAL_TO_GLOBAL(1, ms_idx+1);
-        MULTISTEP_LOCAL_TO_GLOBAL(2, ms_idx+2);
-        MULTISTEP_LOCAL_TO_GLOBAL(3, ms_idx+3);
+            // multistep 3
+
+            MULTISTEP1(0, ms_idx+0);
+            MULTISTEP1(1, ms_idx+1);
+            MULTISTEP1(2, ms_idx+2);/*
+            MULTISTEP1(3, ms_idx+3);
+            MULTISTEP1(4, ms_para_idx+4);
+            MULTISTEP1(5, ms_para_idx+5);
+            MULTISTEP1(6, ms_para_idx+6);
+            MULTISTEP1(7, ms_para_idx+7);//*/
+
+            MULTISTEP2(0, ms_idx+0);
+            MULTISTEP2(1, ms_idx+1);
+            MULTISTEP2(2, ms_idx+2);/*
+            MULTISTEP2(3, ms_idx+3);
+            MULTISTEP2(4, ms_para_idx+4);
+            MULTISTEP2(5, ms_para_idx+5);
+            MULTISTEP2(6, ms_para_idx+6);
+            MULTISTEP2(7, ms_para_idx+7);//*/
+
+            MULTISTEP_LOCAL_TO_GLOBAL(0, ms_idx+0);
+            MULTISTEP_LOCAL_TO_GLOBAL(1, ms_idx+1);
+            MULTISTEP_LOCAL_TO_GLOBAL(2, ms_idx+2);/*
+            MULTISTEP_LOCAL_TO_GLOBAL(3, ms_idx+3);//*/
+        }
+    }
+    else
+    {
+        // arbeite mit zwei auf einmal
+        for(uint_fast32_t ms_idx = 0; ms_idx < cand_cnt; ms_idx += 2)
+        {
+            MULTISTEP0(0, ms_idx+0);
+            MULTISTEP0(1, ms_idx+1);/*
+            MULTISTEP0(2, ms_idx+2);/*
+            MULTISTEP0(3, ms_idx+3);
+            MULTISTEP0(4, ms_para_idx+4);
+            MULTISTEP0(5, ms_para_idx+5);
+            MULTISTEP0(6, ms_para_idx+6);
+            MULTISTEP0(7, ms_para_idx+7);//*/
+
+            MULTISTEP1(0, ms_idx+0);
+            MULTISTEP1(1, ms_idx+1);/*
+            MULTISTEP1(2, ms_idx+2);/*
+            MULTISTEP1(3, ms_idx+3);
+            MULTISTEP1(4, ms_para_idx+4);
+            MULTISTEP1(5, ms_para_idx+5);
+            MULTISTEP1(6, ms_para_idx+6);
+            MULTISTEP1(7, ms_para_idx+7);//*/
+
+
+            MULTISTEP2A(0, ms_idx+0);
+            MULTISTEP2A(1, ms_idx+1);/*
+            MULTISTEP2A(2, ms_idx+2);/*
+            MULTISTEP2A(3, ms_idx+3);
+            MULTISTEP2A(4, ms_para_idx+4);
+            MULTISTEP2A(5, ms_para_idx+5);
+            MULTISTEP2A(6, ms_para_idx+6);
+            MULTISTEP2A(7, ms_para_idx+7);//*/
+
+
+            MULTISTEP3(0, ms_idx+0);
+            MULTISTEP3(1, ms_idx+1);/*
+            MULTISTEP3(2, ms_idx+2);/*
+            MULTISTEP3(3, ms_idx+3);
+            MULTISTEP3(4, ms_para_idx+4);
+            MULTISTEP3(5, ms_para_idx+5);
+            MULTISTEP3(6, ms_para_idx+6);
+            MULTISTEP3(7, ms_para_idx+7);//*/
+
+            MULTISTEP4A(0, ms_idx+0);
+            MULTISTEP4A(1, ms_idx+1);/*
+            MULTISTEP4A(2, ms_idx+2);/*
+            MULTISTEP4A(3, ms_idx+3);
+            MULTISTEP4A(4, ms_para_idx+4);
+            MULTISTEP4A(5, ms_para_idx+5);
+            MULTISTEP4A(6, ms_para_idx+6);
+            MULTISTEP4A(7, ms_para_idx+7);//*/
+
+
+            // multistep 2
+            MULTISTEP1(0, ms_idx+0);
+            MULTISTEP1(1, ms_idx+1);/*
+            MULTISTEP1(2, ms_idx+2);/*
+            MULTISTEP1(3, ms_idx+3);
+            MULTISTEP1(4, ms_para_idx+4);
+            MULTISTEP1(5, ms_para_idx+5);
+            MULTISTEP1(6, ms_para_idx+6);
+            MULTISTEP1(7, ms_para_idx+7);//*/
+
+            MULTISTEP2(0, ms_idx+0);
+            MULTISTEP2(1, ms_idx+1);/*
+            MULTISTEP2(2, ms_idx+2);/*
+            MULTISTEP2(3, ms_idx+3);
+            MULTISTEP2(4, ms_para_idx+4);
+            MULTISTEP2(5, ms_para_idx+5);
+            MULTISTEP2(6, ms_para_idx+6);
+            MULTISTEP2(7, ms_para_idx+7);//*/
+
+
+            MULTISTEP3(0, ms_idx+0);
+            MULTISTEP3(1, ms_idx+1);/*
+            MULTISTEP3(2, ms_idx+2);/*
+            MULTISTEP3(3, ms_idx+3);
+            MULTISTEP3(4, ms_para_idx+4);
+            MULTISTEP3(5, ms_para_idx+5);
+            MULTISTEP3(6, ms_para_idx+6);
+            MULTISTEP3(7, ms_para_idx+7);//*/
+
+            MULTISTEP4(0, ms_idx+0);
+            MULTISTEP4(1, ms_idx+1);/*
+            MULTISTEP4(2, ms_idx+2);/*
+            MULTISTEP4(3, ms_idx+3);
+            MULTISTEP4(4, ms_para_idx+4);
+            MULTISTEP4(5, ms_para_idx+5);
+            MULTISTEP4(6, ms_para_idx+6);
+            MULTISTEP4(7, ms_para_idx+7);//*/
+
+            // multistep 3
+
+            MULTISTEP1(0, ms_idx+0);
+            MULTISTEP1(1, ms_idx+1);/*
+            MULTISTEP1(2, ms_idx+2);/*
+            MULTISTEP1(3, ms_idx+3);
+            MULTISTEP1(4, ms_para_idx+4);
+            MULTISTEP1(5, ms_para_idx+5);
+            MULTISTEP1(6, ms_para_idx+6);
+            MULTISTEP1(7, ms_para_idx+7);//*/
+
+            MULTISTEP2(0, ms_idx+0);
+            MULTISTEP2(1, ms_idx+1);/*
+            MULTISTEP2(2, ms_idx+2);/*
+            MULTISTEP2(3, ms_idx+3);
+            MULTISTEP2(4, ms_para_idx+4);
+            MULTISTEP2(5, ms_para_idx+5);
+            MULTISTEP2(6, ms_para_idx+6);
+            MULTISTEP2(7, ms_para_idx+7);//*/
+
+            MULTISTEP_LOCAL_TO_GLOBAL(0, ms_idx+0);
+            MULTISTEP_LOCAL_TO_GLOBAL(1, ms_idx+1);/*
+            MULTISTEP_LOCAL_TO_GLOBAL(2, ms_idx+2);/*
+            MULTISTEP_LOCAL_TO_GLOBAL(3, ms_idx+3);//*/
+        }
     }
 
 
