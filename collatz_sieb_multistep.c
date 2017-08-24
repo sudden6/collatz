@@ -80,13 +80,11 @@ unsigned int no_found_candidates;
 #define ms_depth 10 // 9 <= ms_depth <= 10
 
 // Reste-Arrays für Multistep
-uint64_t multistep_it_rest[1 << ms_depth];
-uint64_t multistep_odd[1 << ms_depth];
-uint64_t multistep_pot3_odd[1 << ms_depth];
-uint64_t multistep_nr_it_max[1 << ms_depth];
-double multistep_it_f[1 << ms_depth];
-double multistep_it_maxf[1 << ms_depth];
-double multistep_it_minf[1 << ms_depth];
+uint32_t multistep_it_rest[1 << ms_depth];
+uint32_t multistep_pot3_odd[1 << ms_depth];
+float multistep_it_f[1 << ms_depth];
+float multistep_it_maxf[1 << ms_depth];
+float multistep_it_minf[1 << ms_depth];
 
 // get the current wall clock time in seconds
 double get_time() {
@@ -386,9 +384,7 @@ void init_multistep()
         }
 
         multistep_it_rest[rest] = it_rest;
-        multistep_odd[rest] = odd;
         multistep_pot3_odd[rest] = pot3_32Bit(odd);
-        multistep_nr_it_max[rest] = nr_it_max;
         multistep_it_f[rest] = it_f;
         multistep_it_maxf[rest] = max_f;
         multistep_it_minf[rest] = min_f;
@@ -431,14 +427,14 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
         small_res[0] = res64 & ((1 << ms_depth) - 1);
         mark = new_it_f * multistep_it_minf[small_res[0]] <= MS_MIN_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[0]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[0]]
                 + multistep_it_rest[small_res[0]];
         new_it_f *= multistep_it_f[small_res[0]];
 
         small_res[1] = res64 & ((1 << ms_depth) - 1);
         mark |= new_it_f * multistep_it_minf[small_res[1]] <= MS_MIN_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[1]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[1]]
                 + multistep_it_rest[small_res[1]];
         new_it_f *= multistep_it_f[small_res[1]];
 
@@ -446,7 +442,7 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
         mark |= new_it_f * multistep_it_minf[small_res[2]] <= MS_MIN_CHECK_VAL;
 
         if (mark) return 1;
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[2]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[2]]
                 + multistep_it_rest[small_res[2]];
         new_it_f *= multistep_it_f[small_res[2]];
     }
@@ -455,14 +451,14 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
         small_res[0] = res64 & ((1 << ms_depth) - 1);
         mark = new_it_f * multistep_it_maxf[small_res[0]] > MS_MAX_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[0]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[0]]
                 + multistep_it_rest[small_res[0]];
         new_it_f *= multistep_it_f[small_res[0]];
 
         small_res[1] = res64 & ((1 << ms_depth) - 1);
         mark |= new_it_f * multistep_it_maxf[small_res[1]] > MS_MAX_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[1]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[1]]
                 + multistep_it_rest[small_res[1]];
         new_it_f *= multistep_it_f[small_res[1]];
 
@@ -474,7 +470,7 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
             print_candidate(start);
             return 1;
         }
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[2]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[2]]
                 + multistep_it_rest[small_res[2]];
         new_it_f *= multistep_it_f[small_res[2]];
     }
@@ -485,14 +481,14 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
         small_res[3] = res64 & ((1 << ms_depth) - 1);
         mark = new_it_f * multistep_it_minf[small_res[3]] <= MS_MIN_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[3]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[3]]
                 + multistep_it_rest[small_res[3]];
         new_it_f *= multistep_it_f[small_res[3]];
 
         small_res[4] = res64 & ((1 << ms_depth) - 1);
         mark |= new_it_f * multistep_it_minf[small_res[4]] <= MS_MIN_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[4]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[4]]
                 + multistep_it_rest[small_res[4]];
         new_it_f *= multistep_it_f[small_res[4]];
 
@@ -506,14 +502,14 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
         small_res[3] = res64 & ((1 << ms_depth) - 1);
         mark = new_it_f * multistep_it_maxf[small_res[3]] > MS_MAX_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[3]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[3]]
                 + multistep_it_rest[small_res[3]];
         new_it_f *= multistep_it_f[small_res[3]];
 
         small_res[4] = res64 & ((1 << ms_depth) - 1);
         mark |= new_it_f * multistep_it_maxf[small_res[4]] > MS_MAX_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[4]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[4]]
                 + multistep_it_rest[small_res[4]];
         new_it_f *= multistep_it_f[small_res[4]];
 
@@ -577,24 +573,24 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
         res32 = res32 >> ms_depth;
         uint_fast32_t b = res32 & ((1 << ms_depth) - 1);
 
-        uint_fast32_t uebertrag_0 = (c * pot3_32Bit(multistep_odd[small_res[0]])
+        uint_fast32_t uebertrag_0 = (c * multistep_pot3_odd[small_res[0]]
                                        + multistep_it_rest[small_res[0]]) >> ms_depth;
 
-        uint_fast32_t uebertrag_1 = b * pot3_32Bit(multistep_odd[small_res[0]])
+        uint_fast32_t uebertrag_1 = b * multistep_pot3_odd[small_res[0]]
                                        + uebertrag_0;
 
         uint64_t uebertrag = ((uint64_t) uebertrag_1
-                                       * pot3_32Bit(multistep_odd[small_res[1]])
+                                       * multistep_pot3_odd[small_res[1]]
                                        + multistep_it_rest[small_res[1]]) >> ms_depth;
 
-        uebertrag *= pot3_32Bit(multistep_odd[small_res[2]]); //uebertrag[1]*3^p_2
+        uebertrag *= multistep_pot3_odd[small_res[2]]; //uebertrag[1]*3^p_2
         uebertrag +=  multistep_it_rest[small_res[2]];        //uebertrag[1]*3^p_2 + it_rest[2]
 
         uint128_t int_nr = number >> (3 * ms_depth);  //a
 
-        int_nr *= pot3_64Bit(  multistep_odd[small_res[0]] 	  //a*3^(p_0+p_1+p_2)
-                             + multistep_odd[small_res[1]]
-                             + multistep_odd[small_res[2]] );
+        int_nr *=  multistep_pot3_odd[small_res[0]] 	  //a*3^(p_0+p_1+p_2)
+                 + multistep_pot3_odd[small_res[1]]
+                 + multistep_pot3_odd[small_res[2]];
 
         int_nr += uebertrag;
 
@@ -605,24 +601,24 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
         res32 = res32 >> ms_depth;
         b = res32 & ((1 << ms_depth) - 1);
 
-        uebertrag_0 = (c * pot3_32Bit(multistep_odd[small_res[3]])
+        uebertrag_0 = (c * multistep_pot3_odd[small_res[3]]
                        + multistep_it_rest[small_res[3]]) >> ms_depth;
 
-        uebertrag_1 = b * pot3_32Bit(multistep_odd[small_res[3]])
+        uebertrag_1 = b * multistep_pot3_odd[small_res[3]]
                       + uebertrag_0;
 
         uebertrag = ((uint64_t) uebertrag_1
-                      * pot3_32Bit(multistep_odd[small_res[4]])
+                      * multistep_pot3_odd[small_res[4]]
                       + multistep_it_rest[small_res[4]]) >> ms_depth;
 
-        uebertrag *= pot3_32Bit(multistep_odd[small_res[5]]); //uebertrag[1]*3^p_2
+        uebertrag *= multistep_pot3_odd[small_res[5]]; //uebertrag[1]*3^p_2
         uebertrag +=  multistep_it_rest[small_res[5]];        //uebertrag[1]*3^p_2 + it_rest[2]
 
         uint128_t new_nr = int_nr >> (3 * ms_depth);  //a
 
-        new_nr *= pot3_64Bit(  multistep_odd[small_res[3]] 	  //a*3^(p_0+p_1+p_2)
-                             + multistep_odd[small_res[4]]
-                             + multistep_odd[small_res[5]] );
+        new_nr *= multistep_pot3_odd[small_res[3]] 	  //a*3^(p_0+p_1+p_2)
+                + multistep_pot3_odd[small_res[4]]
+                + multistep_pot3_odd[small_res[5]];
 
         new_nr += uebertrag;
 
@@ -662,17 +658,17 @@ NEW_IT_F_T new_it_f_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
 MARK_T marks_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
 SMALL_RES_T small_res_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
 
-inline void load_res64(uint128_t *restrict number, uint64_t *restrict res64)
+static inline void load_res64(uint128_t *restrict number, uint64_t *restrict res64)
 {
     *res64 = (uint64_t) (*number);
 }
 
-inline void update_small_res(uint64_t *restrict res64, SMALL_RES_T *restrict small_res)
+static inline void update_small_res(uint64_t *restrict res64, SMALL_RES_T *restrict small_res)
 {
     *small_res = (*res64) & ((1 << ms_depth) - 1);
 }
 
-inline void fetch_ms_data(SMALL_RES_T *restrict small_res_p,
+static inline void fetch_ms_data(SMALL_RES_T *restrict small_res_p,
                    IT_REST_T *restrict it_rest, POT3_ODD_T *restrict pot3_odd,
                    IT_F_T *restrict it_f, IT_MINF_T *restrict it_minf)
 {
@@ -683,32 +679,32 @@ inline void fetch_ms_data(SMALL_RES_T *restrict small_res_p,
     *pot3_odd = multistep_pot3_odd[small_res];
 }
 
-inline void update_res64(uint64_t *restrict res64, IT_REST_T *restrict it_rest, POT3_ODD_T *restrict pot3_odd)
+static inline void update_res64(uint64_t *restrict res64, IT_REST_T *restrict it_rest, POT3_ODD_T *restrict pot3_odd)
 {
     *res64 = ((*res64) >> ms_depth) * (*pot3_odd) + (*it_rest);
 }
 
-inline void update_new_it_f(NEW_IT_F_T *restrict new_it_f, IT_F_T *restrict it_f)
+static inline void update_new_it_f(NEW_IT_F_T *restrict new_it_f, IT_F_T *restrict it_f)
 {
     *new_it_f *= *it_f;
 }
 
-inline void load_new_it_f(NEW_IT_F_T *restrict new_it_f, IT_F_T *restrict it_f, float g_it_f)
+static inline void load_new_it_f(NEW_IT_F_T *restrict new_it_f, IT_F_T *restrict it_f, float g_it_f)
 {
     *new_it_f = g_it_f * (*it_f);
 }
 
-inline void load_mark_min(MARK_T *restrict mark,  float g_it_f, IT_MINF_T *restrict it_minf)
+static inline void load_mark_min(MARK_T *restrict mark,  float g_it_f, IT_MINF_T *restrict it_minf)
 {
     *mark = ((float)g_it_f * (*it_minf) <= MS_MIN_CHECK_VAL) ? 0 : UINT32_MAX;
 }
 
-inline void mark_min(MARK_T *restrict mark, NEW_IT_F_T *restrict new_it_f, IT_MINF_T *restrict it_minf)
+static inline void mark_min(MARK_T *restrict mark, NEW_IT_F_T *restrict new_it_f, IT_MINF_T *restrict it_minf)
 {
     *mark &= ((*new_it_f) * (*it_minf) <= MS_MIN_CHECK_VAL) ? 0 : UINT32_MAX;
 }
 
-inline void ms_iter_first(uint128_t *restrict number, float it_f, uint_fast32_t cand_cnt)
+void ms_iter_first(uint128_t *restrict number, float it_f, uint_fast32_t cand_cnt)
 {
     // prefetch 1
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_cnt; ms_idx++)
@@ -730,7 +726,7 @@ inline void ms_iter_first(uint128_t *restrict number, float it_f, uint_fast32_t 
     }
 }
 
-inline void ms_iter_2_3(uint_fast32_t cand_cnt)
+void ms_iter_2_3(uint_fast32_t cand_cnt)
 {
     // prefetch
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_cnt; ms_idx++)
@@ -764,7 +760,7 @@ unsigned int first_multistep_parallel(uint128_t*restrict start, uint128_t*restri
 #define MULTISTEP_PF(GLOBAL_IDX) multistep_it_minf_arr[GLOBAL_IDX] = multistep_it_minf[small_res_arr[GLOBAL_IDX]]; \
                                             multistep_it_rest_arr[GLOBAL_IDX] = multistep_it_rest[small_res_arr[GLOBAL_IDX]]; \
                                             multistep_it_f_arr[GLOBAL_IDX] = multistep_it_f[small_res_arr[GLOBAL_IDX]]; \
-                                            next_pot3_arr[GLOBAL_IDX] = pot3_64Bit(multistep_odd[small_res_arr[GLOBAL_IDX]]);
+                                            next_pot3_arr[GLOBAL_IDX] = multistep_pot3_odd[small_res_arr[GLOBAL_IDX]]);
 
     // markiere Wertunterschreitungen
 //#define MULTISTEP2(LOCAL_IDX, GLOBAL_IDX) mark_ ## LOCAL_IDX |= new_it_f_ ## LOCAL_IDX * multistep_it_minf[small_res_ ## LOCAL_IDX] <= MS_MIN_CHECK_VAL;
@@ -823,14 +819,14 @@ unsigned int first_multistep(const uint128_t start, const uint128_t number,
         small_res[3] = res64 & ((1 << ms_depth) - 1);
         mark = new_it_f * multistep_it_minf[small_res[3]] <= MS_MIN_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[3]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[3]]
                 + multistep_it_rest[small_res[3]];
         new_it_f *= multistep_it_f[small_res[3]];
 
         small_res[4] = res64 & ((1 << ms_depth) - 1);
         mark |= new_it_f * multistep_it_minf[small_res[4]] <= MS_MIN_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[4]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[4]]
                 + multistep_it_rest[small_res[4]];
         new_it_f *= multistep_it_f[small_res[4]];
 
@@ -844,14 +840,14 @@ unsigned int first_multistep(const uint128_t start, const uint128_t number,
         small_res[3] = res64 & ((1 << ms_depth) - 1);
         mark = new_it_f * multistep_it_maxf[small_res[3]] > MS_MAX_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[3]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[3]]
                 + multistep_it_rest[small_res[3]];
         new_it_f *= multistep_it_f[small_res[3]];
 
         small_res[4] = res64 & ((1 << ms_depth) - 1);
         mark |= new_it_f * multistep_it_maxf[small_res[4]] > MS_MAX_CHECK_VAL;
 
-        res64 = (res64 >> ms_depth) * pot3_64Bit(multistep_odd[small_res[4]])
+        res64 = (res64 >> ms_depth) * multistep_pot3_odd[small_res[4]]
                 + multistep_it_rest[small_res[4]];
         new_it_f *= multistep_it_f[small_res[4]];
 
@@ -876,7 +872,7 @@ unsigned int first_multistep(const uint128_t start, const uint128_t number,
     {
         small_res[i] = res64_local & ((1 << ms_depth) - 1);
         res64_local = (res64_local >> ms_depth)
-                      * pot3_64Bit(multistep_odd[small_res[i]])
+                      * multistep_pot3_odd[small_res[i]]
                       + multistep_it_rest[small_res[i]];
     }
 
@@ -888,24 +884,24 @@ unsigned int first_multistep(const uint128_t start, const uint128_t number,
         res32 = res32 >> ms_depth;
         uint_fast32_t b = res32 & ((1 << ms_depth) - 1);
 
-        uint_fast32_t uebertrag_0 = (c * pot3_32Bit(multistep_odd[small_res[0]])
+        uint_fast32_t uebertrag_0 = (c * multistep_pot3_odd[small_res[0]]
                                        + multistep_it_rest[small_res[0]]) >> ms_depth;
 
-        uint_fast32_t uebertrag_1 = b * pot3_32Bit(multistep_odd[small_res[0]])
+        uint_fast32_t uebertrag_1 = b * multistep_pot3_odd[small_res[0]]
                                        + uebertrag_0;
 
         uint64_t uebertrag = ((uint64_t) uebertrag_1
-                                       * pot3_32Bit(multistep_odd[small_res[1]])
+                                       * multistep_pot3_odd[small_res[1]]
                                        + multistep_it_rest[small_res[1]]) >> ms_depth;
 
-        uebertrag *= pot3_32Bit(multistep_odd[small_res[2]]); //uebertrag[1]*3^p_2
+        uebertrag *= multistep_pot3_odd[small_res[2]]; //uebertrag[1]*3^p_2
         uebertrag +=  multistep_it_rest[small_res[2]];        //uebertrag[1]*3^p_2 + it_rest[2]
 
         uint128_t int_nr = number >> (3 * ms_depth);  //a
 
-        int_nr *= pot3_64Bit(  multistep_odd[small_res[0]] 	  //a*3^(p_0+p_1+p_2)
-                             + multistep_odd[small_res[1]]
-                             + multistep_odd[small_res[2]] );
+        int_nr *= multistep_pot3_odd[small_res[0]] 	  //a*3^(p_0+p_1+p_2)
+                + multistep_pot3_odd[small_res[1]]
+                + multistep_pot3_odd[small_res[2]];
 
         int_nr += uebertrag;
 
@@ -916,24 +912,24 @@ unsigned int first_multistep(const uint128_t start, const uint128_t number,
         res32 = res32 >> ms_depth;
         b = res32 & ((1 << ms_depth) - 1);
 
-        uebertrag_0 = (c * pot3_32Bit(multistep_odd[small_res[3]])
-                       + multistep_it_rest[small_res[3]]) >> ms_depth;
+        uebertrag_0 = (c * multistep_pot3_odd[small_res[3]])
+                       + multistep_it_rest[small_res[3]] >> ms_depth;
 
-        uebertrag_1 = b * pot3_32Bit(multistep_odd[small_res[3]])
+        uebertrag_1 = b * multistep_pot3_odd[small_res[3]]
                       + uebertrag_0;
 
         uebertrag = ((uint64_t) uebertrag_1
-                      * pot3_32Bit(multistep_odd[small_res[4]])
-                      + multistep_it_rest[small_res[4]]) >> ms_depth;
+                      * multistep_pot3_odd[small_res[4]])
+                      + multistep_it_rest[small_res[4]] >> ms_depth;
 
-        uebertrag *= pot3_32Bit(multistep_odd[small_res[5]]); //uebertrag[1]*3^p_2
+        uebertrag *= multistep_pot3_odd[small_res[5]]; //uebertrag[1]*3^p_2
         uebertrag +=  multistep_it_rest[small_res[5]];        //uebertrag[1]*3^p_2 + it_rest[2]
 
         uint128_t new_nr = int_nr >> (3 * ms_depth);  //a
 
-        new_nr *= pot3_64Bit(  multistep_odd[small_res[3]] 	  //a*3^(p_0+p_1+p_2)
-                             + multistep_odd[small_res[4]]
-                             + multistep_odd[small_res[5]] );
+        new_nr *= multistep_pot3_odd[small_res[3]] 	  //a*3^(p_0+p_1+p_2)
+                + multistep_pot3_odd[small_res[4]]
+                + multistep_pot3_odd[small_res[5]];
 
         new_nr += uebertrag;
 
