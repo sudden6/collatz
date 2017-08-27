@@ -66,9 +66,6 @@ uint128_t pot3[64];
     #define MAX_NO_OF_NUMBERS ((LOOP_END+8)/9)*5
 #endif
 
-// maximale anzahl an datensätzen für die first_multistep_parallel methode
-#define MS_PARALLEL_MAX_ITER (39/* *9*/ + MAX_PARALLEL_FACTOR - 1)
-
 // Arrays zum Rausschreiben der Restklassen nach sieve_depth_first Iterationen
 // reicht bis sieve_depth_first = 32;
 // Das wären maximal 42 Millionen, wenn man corfactor = 1 setzt; für Vergleich mit etwa
@@ -768,14 +765,14 @@ void ms_iter_3(const uint_fast32_t cand_cnt)
 
 //Erster Multistep ohne Maximums-Prüfung in den ersten 30 Iterationen; nach Amateur
 unsigned int first_multistep_parallel(const uint128_t*restrict start, const uint128_t*restrict number,
-                                const float it_f, const uint_fast32_t nr_it, const uint_fast32_t cand_cnt)
+                                const float it_f, const uint_fast32_t nr_it, const uint_fast32_t parallel_count, const uint_fast32_t cand_cnt)
 {
     unsigned int credits = 1;
 
 
-    ms_iter_1(number, it_f, cand_cnt);
-    ms_iter_2(cand_cnt);
-    ms_iter_3(cand_cnt);
+    ms_iter_1(number, it_f, parallel_count);
+    ms_iter_2(parallel_count);
+    ms_iter_3(parallel_count);
 
 
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_cnt; ms_idx++)
@@ -932,8 +929,8 @@ const uint128_t nine_times_pot2_sieve_depth =
 // , wenn sie nicht kongruent 2 (mod 3) oder 4 (mod 9) sind, zur weiteren
 // Berechnung der Multistep-Methode übergeben.
 
-uint128_t start_arr[MAX_NO_OF_NUMBERS]__attribute__ ((__aligned__(32)));
-uint128_t it_arr[MAX_NO_OF_NUMBERS]__attribute__ ((__aligned__(32)));
+uint128_t start_arr[MAX_NO_OF_NUMBERS+MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
+uint128_t it_arr[MAX_NO_OF_NUMBERS+MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
 
 unsigned int sieve_third_stage (const uint64_t nr_it, const uint64_t rest,
                                 const uint128_t it_rest,
@@ -1000,7 +997,7 @@ unsigned int sieve_third_stage (const uint64_t nr_it, const uint64_t rest,
         for(uint64_t i = 0; i < ms_start_count; i += MAX_PARALLEL_FACTOR)
         {
             uint_fast32_t count = ms_start_count - i >= MAX_PARALLEL_FACTOR ? MAX_PARALLEL_FACTOR : ms_start_count - i;
-            first_multistep_parallel(&(start_arr[i]), &(it_arr[i]), new_it_f, SIEVE_DEPTH, count);
+            first_multistep_parallel(&(start_arr[i]), &(it_arr[i]), new_it_f, SIEVE_DEPTH, MAX_PARALLEL_FACTOR, count);
         }
 #endif
     }
