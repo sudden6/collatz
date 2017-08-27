@@ -647,16 +647,16 @@ unsigned int first_multistep_4_6(const uint128_t start, const uint128_t number,
 #define MARK_T uint32_t
 #define NEW_IT_F_T float
 
-IT_REST_T it_rest_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
-POT3_ODD_T pot3_odd_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
-IT_F_T it_f_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
-IT_MINF_T it_minf_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
+IT_REST_T it_rest_arr[MAX_PARALLEL_FACTOR];
+POT3_ODD_T pot3_odd_arr[MAX_PARALLEL_FACTOR];
+IT_F_T it_f_arr[MAX_PARALLEL_FACTOR];
+IT_MINF_T it_minf_arr[MAX_PARALLEL_FACTOR];
 
 
-uint64_t res64_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
-NEW_IT_F_T new_it_f_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
-MARK_T marks_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
-SMALL_RES_T small_res_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
+uint64_t res64_arr[MAX_PARALLEL_FACTOR];
+NEW_IT_F_T new_it_f_arr[MAX_PARALLEL_FACTOR];
+MARK_T marks_arr[MAX_PARALLEL_FACTOR];
+SMALL_RES_T small_res_arr[MAX_PARALLEL_FACTOR];
 
 void load_res64(const uint128_t *restrict number, uint64_t *restrict res64)
 {
@@ -929,8 +929,8 @@ const uint128_t nine_times_pot2_sieve_depth =
 // , wenn sie nicht kongruent 2 (mod 3) oder 4 (mod 9) sind, zur weiteren
 // Berechnung der Multistep-Methode übergeben.
 
-uint128_t start_arr[MAX_NO_OF_NUMBERS+MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
-uint128_t it_arr[MAX_NO_OF_NUMBERS+MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
+uint128_t start_arr[MAX_NO_OF_NUMBERS+MAX_PARALLEL_FACTOR];
+uint128_t it_arr[MAX_NO_OF_NUMBERS+MAX_PARALLEL_FACTOR];
 
 unsigned int sieve_third_stage (const uint64_t nr_it, const uint64_t rest,
                                 const uint128_t it_rest,
@@ -1284,7 +1284,10 @@ int main()
         double start_time = get_time();
 
         // Möglichkeit zur Parallelisierung
-        #pragma omp parallel for private(i, credits, no_found_candidates) shared(rescnt) schedule(dynamic)
+        #pragma omp parallel for \
+        private(i, it_rest_arr, pot3_odd_arr, it_f_arr, it_minf_arr, res64_arr, new_it_f_arr, marks_arr, \
+                small_res_arr, credits, no_found_candidates, start_arr, it_arr) \
+        shared(rescnt) schedule(dynamic)
         for (i = 0; i < idx_max - idx_min; i++)
         {
             if (!cleared_res[i])
