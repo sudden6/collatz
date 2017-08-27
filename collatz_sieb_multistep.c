@@ -28,6 +28,7 @@ uint64_t checkpoint1 = 0;   // checks how many candidates survive after 3 multis
 uint64_t checkpoint2 = 0;   // checks how many candidates survive after 6 multistep iterations
 uint64_t checkpoint3 = 0;   // checks how often the multistep function is called
 uint64_t checkpoint4 = 0;   // checks the sum of all res64 values after 3 multistep iterations
+double checkpoint5 = 0.0;
 
 // globale Variablen für Start und Ende des Bereichs der zu bearbeitenden Reste
 unsigned int idx_min;
@@ -394,7 +395,7 @@ void init_multistep()
 
         multistep_it_rest[rest] = it_rest;
         multistep_odd[rest] = odd;
-        multistep_pot3_odd[rest] = pot3_32Bit(odd);
+        multistep_pot3_odd[rest] = pot3_64Bit(odd);
         multistep_nr_it_max[rest] = nr_it_max;
         multistep_it_f[rest] = it_f;
         multistep_it_maxf[rest] = max_f;
@@ -406,29 +407,29 @@ void init_multistep()
 #define MS_MIN_CHECK_VAL    ((float)(0.98))
 #define MS_DECIDE_VAL       (1e09)
 
-void ms_mark_min(uint64_t *restrict small_res, uint8_t *restrict mark,
-                 uint64_t *restrict res64, double *restrict new_it_f, uint8_t i)
+void ms_mark_min(uint32_t *restrict small_res, uint8_t *restrict mark,
+                 uint64_t *restrict res64, float *restrict new_it_f, uint8_t i)
 {
     small_res[i] = (*res64) & ((1 << ms_depth) - 1);
-    *mark = (*new_it_f) * multistep_it_minf[small_res[i]] <= MS_MIN_CHECK_VAL;
+    *mark = (*new_it_f) * multistep_it_minf[small_res[i]] < MS_MIN_CHECK_VAL;
 
     *res64 = ((*res64) >> ms_depth) * multistep_pot3_odd[small_res[i]]
             + multistep_it_rest[small_res[i]];
     *new_it_f *= multistep_it_f[small_res[i]];
 
     small_res[i+1] = (*res64) & ((1 << ms_depth) - 1);
-    *mark |= (*new_it_f) * multistep_it_minf[small_res[i+1]] <= MS_MIN_CHECK_VAL;
+    *mark |= (*new_it_f) * multistep_it_minf[small_res[i+1]] < MS_MIN_CHECK_VAL;
 
     *res64 = ((*res64) >> ms_depth) * multistep_pot3_odd[small_res[i+1]]
             + multistep_it_rest[small_res[i+1]];
     *new_it_f *= multistep_it_f[small_res[i+1]];
 
     small_res[i+2] = (*res64) & ((1 << ms_depth) - 1);
-    *mark |= (*new_it_f) * multistep_it_minf[small_res[i+2]] <= MS_MIN_CHECK_VAL;
+    *mark |= (*new_it_f) * multistep_it_minf[small_res[i+2]] < MS_MIN_CHECK_VAL;
 }
 
-void ms_mark_max(uint64_t *restrict small_res, uint8_t *restrict mark,
-                 uint64_t *restrict res64, double *restrict new_it_f, uint8_t i)
+void ms_mark_max(uint32_t *restrict small_res, uint8_t *restrict mark,
+                 uint64_t *restrict res64, float *restrict new_it_f, uint8_t i)
 {
     small_res[i] = (*res64) & ((1 << ms_depth) - 1);
     *mark = (*new_it_f) * multistep_it_maxf[small_res[i]] > MS_MAX_CHECK_VAL;
@@ -448,10 +449,24 @@ void ms_mark_max(uint64_t *restrict small_res, uint8_t *restrict mark,
     *mark |= (*new_it_f) * multistep_it_maxf[small_res[i+2]] > MS_MAX_CHECK_VAL;
 }
 
-void recalc_128(const uint128_t *restrict number, uint64_t *restrict small_res, uint128_t *restrict new_nr)
+// Broken!
+void recalc_128(const uint128_t *restrict number, uint128_t *restrict new_nr)
 {
     // Nun muss genau nachgerechnet werden: Dies geschieht in 2 Schritten, wo je 30
     // Iterationen zusammengefasst werden:
+
+    //small_res[], res, res64 rekonstruieren
+    uint64_t res64 = (uint64_t) *number;
+    uint64_t res = (uint_fast32_t) res64;
+    uint_fast32_t small_res[6];
+    uint_fast32_t i;
+    for (i=0; i<6; i++)
+    {
+        small_res[i] = res64 & ((1 << ms_depth) - 1);
+        res64 = (res64 >> ms_depth)
+                * multistep_pot3_odd[small_res[i]]
+                + multistep_it_rest[small_res[i]];
+    }
 
     // fest für 32/ms_depth = 3 implementiert!
 
@@ -465,7 +480,7 @@ void recalc_128(const uint128_t *restrict number, uint64_t *restrict small_res, 
     // mit   uebertrag[0] = (c*3^p_0 + it_rest[0]) >> m
     // und   uebertrag[1] = ((b*3^p_0 + uebertrag[0])* 3^p_1 + it_rest[1]) >> m
 
-    uint_fast32_t res32 = ((uint64_t) (*number)) >> ms_depth;
+    uint_fast32_t res32 = ((uint_fast32_t) (res)) >> ms_depth;
     uint_fast32_t c = res32 & ((1 << ms_depth) - 1);
     res32 = res32 >> ms_depth;
     uint_fast32_t b = res32 & ((1 << ms_depth) - 1);
@@ -485,15 +500,15 @@ void recalc_128(const uint128_t *restrict number, uint64_t *restrict small_res, 
 
     uint128_t int_nr = (*number) >> (3 * ms_depth);  //a
 
-    int_nr *=  multistep_pot3_odd[small_res[0]] 	  //a*3^(p_0+p_1+p_2)
-             + multistep_pot3_odd[small_res[1]]
-             + multistep_pot3_odd[small_res[2]];
+    int_nr *= ((uint64_t) multistep_pot3_odd[small_res[0]]) 	  //a*3^(p_0+p_1+p_2)
+             * multistep_pot3_odd[small_res[1]]
+             * multistep_pot3_odd[small_res[2]];
 
     int_nr += uebertrag;
 
 
 
-    res32 = ((uint64_t) int_nr) >> ms_depth;
+    res32 = ((uint_fast32_t) int_nr) >> ms_depth;
     c = res32 & ((1 << ms_depth) - 1);
     res32 = res32 >> ms_depth;
     b = res32 & ((1 << ms_depth) - 1);
@@ -513,9 +528,9 @@ void recalc_128(const uint128_t *restrict number, uint64_t *restrict small_res, 
 
     *new_nr = int_nr >> (3 * ms_depth);  //a
 
-    *new_nr *= multistep_pot3_odd[small_res[3]] 	  //a*3^(p_0+p_1+p_2)
-            + multistep_pot3_odd[small_res[4]]
-            + multistep_pot3_odd[small_res[5]];
+    *new_nr *= ((uint64_t)multistep_pot3_odd[small_res[3]]) 	  //a*3^(p_0+p_1+p_2)
+            * multistep_pot3_odd[small_res[4]]
+            * multistep_pot3_odd[small_res[5]];
 
     *new_nr += uebertrag;
 }
@@ -533,16 +548,16 @@ void recalc_128(const uint128_t *restrict number, uint64_t *restrict small_res, 
 // Iterationen zusammengefasst und gemeinsam berechnet werden.
 
 unsigned int multistep(const uint128_t start, const uint128_t number,
-                        const double it_f, const uint_fast32_t nr_it)
+                        const float it_f, const uint_fast32_t nr_it)
 {
     CHECK(checkpoint3);
     uint64_t res = (uint64_t) number;
-    double new_it_f = it_f;
+    float new_it_f = it_f;
     uint64_t res64 = res;
     uint8_t mark;
 
     // fest für 64/ms_depth = 6 implementiert!
-    uint64_t small_res[6];
+    uint32_t small_res[6];
 
     // Die ersten 30 Iterationen: Wenn new_it_f < 5*10^10, dann kann kein neuer
     // Kandidat in diesen 30 Iterationen gefunden werden ==> keine Maximums-Prüfung
@@ -568,7 +583,7 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
     new_it_f *= multistep_it_f[small_res[2]];
 
     // Nun die zweiten 30 Iterationen analog den ersten 30.
-    if (new_it_f < 5e10)
+    if (new_it_f < MS_DECIDE_VAL)
     {
         ms_mark_min(small_res, &mark, &res64, &new_it_f, 3);
         if (mark) return 1;
@@ -613,7 +628,7 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
     }
 
     uint128_t new_nr;
-    recalc_128(&number, small_res, &new_nr);
+    recalc_128(&number, &new_nr);
 
     return (1 + multistep(start, new_nr, new_it_f, nr_it + 6 * ms_depth));
 
@@ -627,8 +642,8 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
 
 }
 
-unsigned int first_multistep(const uint128_t start, const uint128_t number,
-                                const double it_f, const uint_fast32_t nr_it, uint64_t res64);
+unsigned int first_multistep_4_6(const uint128_t start, const uint128_t number,
+                                const float it_f, const uint_fast32_t nr_it, uint64_t res64);
 
 #define SMALL_RES_T uint32_t
 #define POT3_ODD_T uint32_t
@@ -640,68 +655,68 @@ unsigned int first_multistep(const uint128_t start, const uint128_t number,
 
 IT_REST_T it_rest_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
 POT3_ODD_T pot3_odd_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
-IT_F_T it_f_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
+IT_F_T it_f_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32))) = {0};
 IT_MINF_T it_minf_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
 
 
 uint64_t res64_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
-NEW_IT_F_T new_it_f_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
+NEW_IT_F_T new_it_f_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32))) = {0};
 MARK_T marks_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
 SMALL_RES_T small_res_arr[MAX_PARALLEL_FACTOR]__attribute__ ((__aligned__(32)));
 
-void load_res64(uint128_t *restrict number, uint64_t *restrict res64)
+void load_res64(const uint128_t *restrict number, uint64_t *restrict res64)
 {
     *res64 = (uint64_t) (*number);
 }
 
-void update_small_res(uint64_t *restrict res64, SMALL_RES_T *restrict small_res)
+void update_small_res(const uint64_t *restrict res64, SMALL_RES_T *restrict small_res)
 {
     *small_res = (*res64) & ((1 << ms_depth) - 1);
 }
 
-void fetch_ms_data(SMALL_RES_T *restrict small_res_p,
+void fetch_ms_data(const SMALL_RES_T *restrict small_res_p,
                    IT_REST_T *restrict it_rest, POT3_ODD_T *restrict pot3_odd,
                    IT_F_T *restrict it_f, IT_MINF_T *restrict it_minf)
 {
     uint32_t small_res = *small_res_p;
-    *it_f = multistep_it_f[small_res];
-    *it_minf = multistep_it_minf[small_res];
-    *it_rest = multistep_it_rest[small_res];
-    *pot3_odd = multistep_pot3_odd[small_res];
+    *it_f = (float) multistep_it_f[small_res];
+    *it_minf = (float) multistep_it_minf[small_res];
+    *it_rest = (uint32_t) multistep_it_rest[small_res];
+    *pot3_odd = (uint32_t) multistep_pot3_odd[small_res];
 }
 
-void update_res64(uint64_t *restrict res64, IT_REST_T *restrict it_rest, POT3_ODD_T *restrict pot3_odd)
+void update_res64(uint64_t *restrict res64, const IT_REST_T *restrict it_rest,
+                  const POT3_ODD_T *restrict pot3_odd)
 {
     *res64 = ((*res64) >> ms_depth) * (*pot3_odd) + (*it_rest);
 }
 
-void update_new_it_f(NEW_IT_F_T *restrict new_it_f, IT_F_T *restrict it_f)
+void update_new_it_f(NEW_IT_F_T *new_it_f, const IT_F_T *restrict it_f)
 {
     *new_it_f *= *it_f;
 }
 
-void load_new_it_f(NEW_IT_F_T *restrict new_it_f, IT_F_T *restrict it_f, float g_it_f)
+void load_new_it_f(NEW_IT_F_T *restrict new_it_f, const IT_F_T *restrict it_f, const float g_it_f)
 {
     *new_it_f = g_it_f * (*it_f);
 }
 
-void load_mark_min(MARK_T *restrict mark,  float g_it_f, IT_MINF_T *restrict it_minf)
+void load_mark_min(MARK_T *restrict mark, const float g_it_f, const IT_MINF_T *restrict it_minf)
 {
-    *mark = ((float)g_it_f * (*it_minf) <= MS_MIN_CHECK_VAL) ? 0 : UINT32_MAX;
+    *mark = ((g_it_f * (*it_minf)) < MS_MIN_CHECK_VAL) ? 0 : UINT32_MAX;
 }
 
-void mark_min(MARK_T *restrict mark, NEW_IT_F_T *restrict new_it_f, IT_MINF_T *restrict it_minf)
+void mark_min(MARK_T *restrict mark, const NEW_IT_F_T *restrict new_it_f, const IT_MINF_T *restrict it_minf)
 {
-    *mark &= ((*new_it_f) * (*it_minf) <= MS_MIN_CHECK_VAL) ? 0 : UINT32_MAX;
+    *mark &= (((*new_it_f) * (*it_minf)) < MS_MIN_CHECK_VAL) ? 0 : UINT32_MAX;
 }
 
-void ms_iter_1(uint128_t *restrict number, float it_f, uint_fast32_t cand_cnt)
+void ms_iter_1(const uint128_t *restrict number, const float it_f, const uint_fast32_t cand_cnt)
 {
     // prefetch 1
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_cnt; ms_idx++)
     {
-        load_res64(number + ms_idx,  &(res64_arr[ms_idx]));
-
+        load_res64(&(number[ms_idx]),  &(res64_arr[ms_idx]));
         update_small_res(&(res64_arr[ms_idx]), &(small_res_arr[ms_idx]));
         fetch_ms_data(&(small_res_arr[ms_idx]), &(it_rest_arr[ms_idx]),
                       &(pot3_odd_arr[ms_idx]), &(it_f_arr[ms_idx]),
@@ -714,11 +729,12 @@ void ms_iter_1(uint128_t *restrict number, float it_f, uint_fast32_t cand_cnt)
         load_mark_min(&(marks_arr[ms_idx]),it_f, &(it_minf_arr[ms_idx]));
         update_res64(&(res64_arr[ms_idx]), &(it_rest_arr[ms_idx]), &(pot3_odd_arr[ms_idx]));
         load_new_it_f(&(new_it_f_arr[ms_idx]), &(it_f_arr[ms_idx]), it_f);
+
         update_small_res(&(res64_arr[ms_idx]), &(small_res_arr[ms_idx]));
     }
 }
 
-void ms_iter_2(uint_fast32_t cand_cnt)
+void ms_iter_2(const uint_fast32_t cand_cnt)
 {
     // prefetch
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_cnt; ms_idx++)
@@ -737,7 +753,7 @@ void ms_iter_2(uint_fast32_t cand_cnt)
     }
 }
 
-void ms_iter_3(uint_fast32_t cand_cnt)
+void ms_iter_3(const uint_fast32_t cand_cnt)
 {
     // prefetch
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_cnt; ms_idx++)
@@ -750,29 +766,28 @@ void ms_iter_3(uint_fast32_t cand_cnt)
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_cnt; ms_idx++)
     {
         mark_min(&(marks_arr[ms_idx]), &(new_it_f_arr[ms_idx]), &(it_minf_arr[ms_idx]));
-        update_res64(&(res64_arr[ms_idx]), &(it_rest_arr[ms_idx]), &(pot3_odd_arr[ms_idx]));
-        update_new_it_f(&(new_it_f_arr[ms_idx]), &(it_f_arr[ms_idx]));
     }
 }
 
 //Erster Multistep ohne Maximums-Prüfung in den ersten 30 Iterationen; nach Amateur
-unsigned int first_multistep_parallel(uint128_t*restrict start, uint128_t*restrict number,
-                                const float it_f, const uint_fast32_t nr_it, uint_fast32_t cand_cnt)
+unsigned int first_multistep_parallel(const uint128_t*restrict start, const uint128_t*restrict number,
+                                const float it_f, const uint_fast32_t nr_it, const uint_fast32_t cand_cnt)
 {
     unsigned int credits = 1;
 
 
     ms_iter_1(number, it_f, cand_cnt);
-
     ms_iter_2(cand_cnt);
-    ms_iter_2(cand_cnt);
+    ms_iter_3(cand_cnt);
 
 
     for(uint_fast32_t ms_idx = 0; ms_idx < cand_cnt; ms_idx++)
     {
         if(marks_arr[ms_idx])
         {
-            credits += first_multistep(start[ms_idx], number[ms_idx], new_it_f_arr[ms_idx], nr_it, res64_arr[ms_idx]);
+            update_res64(&(res64_arr[ms_idx]), &(it_rest_arr[ms_idx]), &(pot3_odd_arr[ms_idx]));
+            update_new_it_f(&(new_it_f_arr[ms_idx]), &(it_f_arr[ms_idx]));
+            credits += first_multistep_4_6(start[ms_idx], number[ms_idx], new_it_f_arr[ms_idx], nr_it, res64_arr[ms_idx]);
         }
     }
 
@@ -782,24 +797,26 @@ unsigned int first_multistep_parallel(uint128_t*restrict start, uint128_t*restri
 
 
 //Erster Multistep ohne Maximums-Prüfung in den ersten 30 Iterationen; nach Amateur
-unsigned int first_multistep(const uint128_t start, const uint128_t number,
-                                const double it_f, const uint_fast32_t nr_it, uint64_t res64)
+unsigned int first_multistep_4_6(const uint128_t start, const uint128_t number,
+                                const float it_f, const uint_fast32_t nr_it, const uint64_t g_res64)
 {
-    double new_it_f = it_f;
+    float new_it_f = it_f;
+    uint64_t res64 = g_res64;
     uint8_t mark;
 
     // fest für 64/ms_depth = 6 implementiert!
 
-    checkpoint4 += res64;
-    uint64_t small_res[6];
+    uint32_t small_res[6];
 
     CHECK(checkpoint1);
 
     if (new_it_f < MS_DECIDE_VAL)
     {
         ms_mark_min(small_res, &mark, &res64, &new_it_f, 3);
-        if (mark) return 1;
-        new_it_f *= multistep_it_f[small_res[5]];
+        if (mark)
+        {
+            return 1;
+        }
     }
     else
     {
@@ -809,29 +826,21 @@ unsigned int first_multistep(const uint128_t start, const uint128_t number,
             print_candidate(start);
             return 1;
         }
-        new_it_f *= multistep_it_f[small_res[5]];
     }
+
+    new_it_f *= multistep_it_f[small_res[5]];
 
     CHECK(checkpoint2);
+    checkpoint5 += new_it_f;
+    checkpoint4 += number;
 
-    // need 6 steps of recalculating, no checks needed, since we are already here
-    uint64_t res64_local = (uint64_t) number;
-
-    for(int i = 0; i < 6; i++)
-    {
-        small_res[i] = res64_local & ((1 << ms_depth) - 1);
-        res64_local = (res64_local >> ms_depth)
-                      * multistep_pot3_odd[small_res[i]]
-                      + multistep_it_rest[small_res[i]];
-    }
-
-
-    //if (min_f > 0.98)
     uint128_t new_nr;
-    recalc_128(&number, small_res, &new_nr);
+    recalc_128(&number, &new_nr);
+
+
+
 
     return (1 + multistep(start, new_nr, new_it_f, nr_it + 6 * ms_depth));
-
 }
 // Siebt Restklassen bis Iteration sieve_depth_first (32) vor und speichert die
 // Ergebnisse der übrigbleibenden Restklassen in den folgenden globalen Arrays:
@@ -948,6 +957,9 @@ unsigned int sieve_third_stage (const uint64_t nr_it, const uint64_t rest,
         // for (k = 0; k < 2^(67-sieve_depth); k++)
         //   {Teste Startzahl k * 2^sieve_depth + rest}
 
+
+        float new_it_f = (float) it_f;
+
         uint128_t start_0 = rest;
         uint128_t it_0 = it_rest;
 
@@ -995,7 +1007,7 @@ unsigned int sieve_third_stage (const uint64_t nr_it, const uint64_t rest,
         for(uint64_t i = 0; i < ms_start_count; i += MAX_PARALLEL_FACTOR)
         {
             uint_fast32_t count = ms_start_count - i >= MAX_PARALLEL_FACTOR ? MAX_PARALLEL_FACTOR : ms_start_count - i;
-            first_multistep_parallel(&(start_arr[i]), &(it_arr[i]), it_f, SIEVE_DEPTH, count);
+            first_multistep_parallel(&(start_arr[i]), &(it_arr[i]), new_it_f, SIEVE_DEPTH, count);
         }
 #endif
     }
@@ -1321,7 +1333,7 @@ int main()
     //int remove_failed = remove("worktodo.txt");
     //if (remove_failed) printf("Could not delete file 'worktodo.txt'.\n\n");
 
-    printf("chk1: %lu chk2: %lu chk3: %lu chk4: %lu\n", checkpoint1, checkpoint2, checkpoint3, checkpoint4);
+    printf("chk1: %lu chk2: %lu chk3: %lu chk4: %lu chk5: %f\n", checkpoint1, checkpoint2, checkpoint3, checkpoint4, checkpoint5);
     //printf("press enter to exit.\n");
     //getchar();
 
