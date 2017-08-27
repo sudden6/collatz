@@ -115,7 +115,7 @@ void init_potarray()
 // betrachteten Intervall zurück; andernfalls -1
 int nr_residue_class(const uint128_t start)
 {
-    uint_fast32_t startres32 = start;
+    uint_fast32_t startres32 = start & UINT32_MAX;
 
     int i;
     for (i = 0; i < idx_max-idx_min; i++)
