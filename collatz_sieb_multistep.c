@@ -12,7 +12,7 @@ typedef __uint128_t uint128_t;
 #define CHECKPOINTS
 
 #ifdef CHECKPOINTS
-#define CHECK(x) (x ++)
+#define CHECK(x) (x)
 #else
 #define CHECK(x)
 #endif
@@ -550,7 +550,7 @@ void recalc_128(const uint128_t *restrict number, uint128_t *restrict new_nr)
 unsigned int multistep(const uint128_t start, const uint128_t number,
                         const float it_f, const uint_fast32_t nr_it)
 {
-    CHECK(checkpoint3);
+    CHECK(checkpoint3++);
     uint64_t res = (uint64_t) number;
     float new_it_f = it_f;
     uint64_t res64 = res;
@@ -808,7 +808,7 @@ unsigned int first_multistep_4_6(const uint128_t start, const uint128_t number,
 
     uint32_t small_res[6];
 
-    CHECK(checkpoint1);
+    CHECK(checkpoint1++);
 
     if (new_it_f < MS_DECIDE_VAL)
     {
@@ -831,8 +831,8 @@ unsigned int first_multistep_4_6(const uint128_t start, const uint128_t number,
     new_it_f *= multistep_it_f[small_res[5]];
 
     CHECK(checkpoint2);
-    checkpoint5 += new_it_f;
-    checkpoint4 += number;
+    CHECK(checkpoint5 += new_it_f);
+    CHECK(checkpoint4 += number);
 
     uint128_t new_nr;
     recalc_128(&number, &new_nr);
