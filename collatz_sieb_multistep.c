@@ -3,6 +3,9 @@
 #include<stdint.h>
 #include <sys/time.h>
 #include <time.h>
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#include <pmmintrin.h>
 
 
 //Maximale Anzahl an Iterationen vor Abbruch (zur Vermeidung einer Endlosschleife)
@@ -85,11 +88,17 @@ unsigned int no_found_candidates;
 #define ms_depth 10 // 9 <= ms_depth <= 10
 
 // Reste-Arrays für Multistep
-uint32_t multistep_it_rest[1 << ms_depth];
-uint32_t multistep_pot3_odd[1 << ms_depth];
-float multistep_it_f[1 << ms_depth];
+
+typedef struct {
+    uint32_t it_rest;
+    uint32_t pot3_odd;
+    float it_f;
+    float it_minf;
+} __attribute__((packed)) ms_consts_t;
+
+ms_consts_t ms_consts[1 << ms_depth] __attribute__((aligned(32)));
+
 float multistep_it_maxf[1 << ms_depth];
-float multistep_it_minf[1 << ms_depth];
 
 // get the current wall clock time in seconds
 double get_time() {
@@ -388,11 +397,11 @@ void init_multistep()
                 min_f = cormin;
         }
 
-        multistep_it_rest[rest] = it_rest;
-        multistep_pot3_odd[rest] = pot3_64Bit(odd);
-        multistep_it_f[rest] = it_f;
+        ms_consts[rest].it_rest = it_rest;
+        ms_consts[rest].pot3_odd = pot3_64Bit(odd);
+        ms_consts[rest].it_f = it_f;
+        ms_consts[rest].it_minf = min_f;
         multistep_it_maxf[rest] = max_f;
-        multistep_it_minf[rest] = min_f;
     }
 }
 
@@ -404,21 +413,21 @@ void ms_mark_min(uint_fast32_t *restrict last_small_res, uint8_t *restrict mark,
                  uint64_t *restrict res64, float *restrict new_it_f)
 {
     uint_fast32_t small_res = (*res64) & ((1 << ms_depth) - 1);
-    *mark = (*new_it_f) * multistep_it_minf[small_res] < MS_MIN_CHECK_VAL;
+    *mark = (*new_it_f) * ms_consts[small_res].it_minf < MS_MIN_CHECK_VAL;
 
-    *res64 = ((*res64) >> ms_depth) * multistep_pot3_odd[small_res]
-            + multistep_it_rest[small_res];
-    *new_it_f *= multistep_it_f[small_res];
+    *res64 = ((*res64) >> ms_depth) * ms_consts[small_res].pot3_odd
+            + ms_consts[small_res].it_rest;
+    *new_it_f *= ms_consts[small_res].it_f;
 
     small_res = (*res64) & ((1 << ms_depth) - 1);
-    *mark |= (*new_it_f) * multistep_it_minf[small_res] < MS_MIN_CHECK_VAL;
+    *mark |= (*new_it_f) * ms_consts[small_res].it_minf < MS_MIN_CHECK_VAL;
 
-    *res64 = ((*res64) >> ms_depth) * multistep_pot3_odd[small_res]
-            + multistep_it_rest[small_res];
-    *new_it_f *= multistep_it_f[small_res];
+    *res64 = ((*res64) >> ms_depth) * ms_consts[small_res].pot3_odd
+            + ms_consts[small_res].it_rest;
+    *new_it_f *= ms_consts[small_res].it_f;
 
     *last_small_res = (*res64) & ((1 << ms_depth) - 1);
-    *mark |= (*new_it_f) * multistep_it_minf[*last_small_res] < MS_MIN_CHECK_VAL;
+    *mark |= (*new_it_f) * ms_consts[small_res].it_minf < MS_MIN_CHECK_VAL;
 }
 
 void ms_mark_max(uint_fast32_t *restrict last_small_res, uint8_t *restrict mark,
@@ -427,16 +436,16 @@ void ms_mark_max(uint_fast32_t *restrict last_small_res, uint8_t *restrict mark,
     uint_fast32_t small_res = (*res64) & ((1 << ms_depth) - 1);
     *mark = (*new_it_f) * multistep_it_maxf[small_res] > MS_MAX_CHECK_VAL;
 
-    *res64 = ((*res64) >> ms_depth) * multistep_pot3_odd[small_res]
-            + multistep_it_rest[small_res];
-    *new_it_f *= multistep_it_f[small_res];
+    *res64 = ((*res64) >> ms_depth) * ms_consts[small_res].pot3_odd
+            + ms_consts[small_res].it_rest;
+    *new_it_f *= ms_consts[small_res].it_f;
 
     small_res = (*res64) & ((1 << ms_depth) - 1);
     *mark |= (*new_it_f) * multistep_it_maxf[small_res] > MS_MAX_CHECK_VAL;
 
-    *res64 = ((*res64) >> ms_depth) * multistep_pot3_odd[small_res]
-            + multistep_it_rest[small_res];
-    *new_it_f *= multistep_it_f[small_res];
+    *res64 = ((*res64) >> ms_depth) * ms_consts[small_res].pot3_odd
+            + ms_consts[small_res].it_rest;
+    *new_it_f *= ms_consts[small_res].it_f;
 
     *last_small_res = (*res64) & ((1 << ms_depth) - 1);
     *mark |= (*new_it_f) * multistep_it_maxf[*last_small_res] > MS_MAX_CHECK_VAL;
@@ -457,8 +466,8 @@ void recalc_128(const uint128_t *restrict number, uint128_t *restrict new_nr)
     {
         small_res[i] = res64 & ((1 << ms_depth) - 1);
         res64 = (res64 >> ms_depth)
-                * multistep_pot3_odd[small_res[i]]
-                + multistep_it_rest[small_res[i]];
+                * ms_consts[small_res[i]].pot3_odd
+                + ms_consts[small_res[i]].it_rest;
     }
 
     // fest für 32/ms_depth = 3 implementiert!
@@ -478,24 +487,24 @@ void recalc_128(const uint128_t *restrict number, uint128_t *restrict new_nr)
     res32 = res32 >> ms_depth;
     uint_fast32_t b = res32 & ((1 << ms_depth) - 1);
 
-    uint_fast32_t uebertrag_0 = (c * multistep_pot3_odd[small_res[0]]
-                                   + multistep_it_rest[small_res[0]]) >> ms_depth;
+    uint_fast32_t uebertrag_0 = (c * ms_consts[small_res[0]].pot3_odd
+                                   + ms_consts[small_res[0]].it_rest) >> ms_depth;
 
-    uint_fast32_t uebertrag_1 = b * multistep_pot3_odd[small_res[0]]
+    uint_fast32_t uebertrag_1 = b * ms_consts[small_res[0]].pot3_odd
                                    + uebertrag_0;
 
     uint64_t uebertrag = ((uint64_t) uebertrag_1
-                                   * multistep_pot3_odd[small_res[1]]
-                                   + multistep_it_rest[small_res[1]]) >> ms_depth;
+                                   * ms_consts[small_res[1]].pot3_odd
+                                   + ms_consts[small_res[1]].it_rest) >> ms_depth;
 
-    uebertrag *= multistep_pot3_odd[small_res[2]]; //uebertrag[1]*3^p_2
-    uebertrag +=  multistep_it_rest[small_res[2]];        //uebertrag[1]*3^p_2 + it_rest[2]
+    uebertrag *= ms_consts[small_res[2]].pot3_odd; //uebertrag[1]*3^p_2
+    uebertrag += ms_consts[small_res[2]].it_rest;        //uebertrag[1]*3^p_2 + it_rest[2]
 
     uint128_t int_nr = (*number) >> (3 * ms_depth);  //a
 
-    int_nr *= ((uint64_t) multistep_pot3_odd[small_res[0]]) 	  //a*3^(p_0+p_1+p_2)
-             * multistep_pot3_odd[small_res[1]]
-             * multistep_pot3_odd[small_res[2]];
+    int_nr *= ((uint64_t) ms_consts[small_res[0]].pot3_odd) 	  //a*3^(p_0+p_1+p_2)
+             * ms_consts[small_res[1]].pot3_odd
+             * ms_consts[small_res[2]].pot3_odd;
 
     int_nr += uebertrag;
 
@@ -506,24 +515,24 @@ void recalc_128(const uint128_t *restrict number, uint128_t *restrict new_nr)
     res32 = res32 >> ms_depth;
     b = res32 & ((1 << ms_depth) - 1);
 
-    uebertrag_0 = (c * multistep_pot3_odd[small_res[3]]
-                   + multistep_it_rest[small_res[3]]) >> ms_depth;
+    uebertrag_0 = (c * ms_consts[small_res[3]].pot3_odd
+                   + ms_consts[small_res[3]].pot3_odd) >> ms_depth;
 
-    uebertrag_1 = b * multistep_pot3_odd[small_res[3]]
+    uebertrag_1 = b * ms_consts[small_res[3]].pot3_odd
                   + uebertrag_0;
 
     uebertrag = ((uint64_t) uebertrag_1
-                  * multistep_pot3_odd[small_res[4]]
-                  + multistep_it_rest[small_res[4]]) >> ms_depth;
+                  * ms_consts[small_res[4]].pot3_odd
+                  + ms_consts[small_res[4]].it_rest) >> ms_depth;
 
-    uebertrag *= multistep_pot3_odd[small_res[5]]; //uebertrag[1]*3^p_2
-    uebertrag +=  multistep_it_rest[small_res[5]];        //uebertrag[1]*3^p_2 + it_rest[2]
+    uebertrag *= ms_consts[small_res[5]].pot3_odd; //uebertrag[1]*3^p_2
+    uebertrag += ms_consts[small_res[5]].it_rest;        //uebertrag[1]*3^p_2 + it_rest[2]
 
     *new_nr = int_nr >> (3 * ms_depth);  //a
 
-    *new_nr *= ((uint64_t)multistep_pot3_odd[small_res[3]]) 	  //a*3^(p_0+p_1+p_2)
-            * multistep_pot3_odd[small_res[4]]
-            * multistep_pot3_odd[small_res[5]];
+    *new_nr *= ((uint64_t)ms_consts[small_res[3]].pot3_odd) 	  //a*3^(p_0+p_1+p_2)
+            * ms_consts[small_res[4]].pot3_odd
+            * ms_consts[small_res[5]].pot3_odd;
 
     *new_nr += uebertrag;
 }
@@ -572,9 +581,9 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
             return 1;
         }
     }
-    res64 = (res64 >> ms_depth) * multistep_pot3_odd[last_small_res]
-            + multistep_it_rest[last_small_res];
-    new_it_f *= multistep_it_f[last_small_res];
+    res64 = (res64 >> ms_depth) * ms_consts[last_small_res].pot3_odd
+            + ms_consts[last_small_res].it_rest;
+    new_it_f *= ms_consts[last_small_res].it_f;
 
     // Nun die zweiten 30 Iterationen analog den ersten 30.
     if (new_it_f < MS_DECIDE_VAL)
@@ -591,7 +600,7 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
             return 1;
         }
     }
-    new_it_f *= multistep_it_f[last_small_res];
+    new_it_f *= ms_consts[last_small_res].it_f;
 
 
     //Allgemein:
@@ -673,10 +682,10 @@ void fetch_ms_data(const SMALL_RES_T *restrict small_res_p,
                    IT_F_T *restrict it_f, IT_MINF_T *restrict it_minf)
 {
     uint32_t small_res = *small_res_p;
-    *it_f = multistep_it_f[small_res];
-    *it_minf = multistep_it_minf[small_res];
-    *it_rest = multistep_it_rest[small_res];
-    *pot3_odd = multistep_pot3_odd[small_res];
+    *it_f = ms_consts[small_res].it_f;
+    *it_minf = ms_consts[small_res].it_minf;
+    *it_rest = ms_consts[small_res].it_rest;
+    *pot3_odd = ms_consts[small_res].pot3_odd;
 }
 
 void update_res64(uint64_t *restrict res64, const IT_REST_T *restrict it_rest,
@@ -726,6 +735,71 @@ void ms_iter_1(const uint128_t *restrict number, const float it_f, const uint_fa
 
         update_small_res(&(res64_arr[ms_idx]), &(small_res_arr[ms_idx]));
     }
+}
+
+void ms_iter_1_sse(const uint128_t *restrict number, const float g_it_f)
+{
+    uint64_t address[2];    // TODO: align on 16byte bound
+    // load res64 into 2 registers
+    __m128d tmp = _mm_load_sd((double const*) (number+0));   // load lower element, zero upper
+    __m128d res64_1_0 = _mm_loadh_pd(tmp,(double const*) (number+1)); // load higher element, copy lower
+    tmp =     _mm_load_sd((double const*) (number+2));   // load lower element, zero upper
+    __m128d res64_3_2 = _mm_loadh_pd(tmp,(double const*) (number+1)); // load higher element, copy lower
+
+    // compute small_res
+    uint32_t mask = ((1 << ms_depth) - 1);   // mask for and
+    __m128d mask_twice = _mm_load1_pd((double const*) &mask);// load mask
+    __m128i res64_1_0_and = _mm_castpd_si128(_mm_and_pd(res64_1_0, mask_twice));// apply mask
+    __m128i res64_3_2_and = _mm_castpd_si128(_mm_and_pd(res64_3_2, mask_twice));// apply mask
+
+    __m128i p_ms_consts_twice = _mm_castpd_si128(_mm_load1_pd((double const*) &(ms_consts[0]))); //load first address of ms_consts struct
+    // shift res64_1_0_and multiply res64_1_0 by the factor 16 to get the offset in bytes from ms_consts
+    __m128i ms_consts_offs_1_0 = _mm_slli_epi64(res64_1_0_and, 16);
+    __m128i ms_consts_offs_3_2 = _mm_slli_epi64(res64_3_2_and, 16);
+    // add to the base address to get the new address
+    ms_consts_offs_1_0 = _mm_add_epi64(ms_consts_offs_1_0, p_ms_consts_twice);
+    ms_consts_offs_3_2 = _mm_add_epi64(ms_consts_offs_3_2, p_ms_consts_twice);
+
+    // hack to load values from memory based on half of a sse register
+    // TODO: compare against normal C code
+    _mm_store_pd((double *)address, _mm_castsi128_pd(ms_consts_offs_1_0));
+    __m128i ms_consts_0 = _mm_load_si128((__m128i const*) address[0]); // load ms_consts_0 with cast
+    __m128i ms_consts_1 = _mm_load_si128((__m128i const*) address[1]); // load ms_consts_1 with cast
+    // hack to load values from memory based on half of a sse register
+    _mm_store_pd((double *)address, _mm_castsi128_pd(ms_consts_offs_3_2));
+    __m128i ms_consts_2 = _mm_load_si128((__m128i const*) address[0]); // load ms_consts_0 with cast
+    __m128i ms_consts_3 = _mm_load_si128((__m128i const*) address[1]); // load ms_consts_1 with cast
+
+    // separate ms_const struct into parts
+    _MM_TRANSPOSE4_PS(ms_consts_0, ms_consts_1, ms_consts_2, ms_consts_3);
+
+    /*
+    typedef struct {
+        uint32_t it_rest;
+        uint32_t pot3_odd;
+        float it_f;
+        float it_minf;
+    } __attribute__((packed)) ms_consts_t;*/
+
+    // rename vars for better readability
+    __m128i it_rest_0_1_2_3 = ms_consts_0;
+    __m128i pot3_odd = ms_consts_1;
+    __m128 it_f = ms_consts_2;
+    __m128 it_minf = ms_consts_3;
+
+    // load g_it_f
+    __m128 g_it_f_v = _mm_load_ps1(&g_it_f);
+
+    // calculate compare value for mark
+    __m128 cur_minf = _mm_mul_ps(g_it_f_v, it_minf);
+
+    // load compare value
+    __m128 cmp_minf = _mm_set_ps1(MS_MIN_CHECK_VAL);
+
+    // compare cur_minf < cmp_minf
+    __m128 mark_min = _mm_cmplt_ps(cur_minf, cmp_minf);
+
+
 }
 
 void ms_iter_2(const uint_fast32_t cand_cnt)
@@ -822,7 +896,7 @@ unsigned int first_multistep_4_6(const uint128_t start, const uint128_t number,
         }
     }
 
-    new_it_f *= multistep_it_f[last_small_res];
+    new_it_f *= ms_consts[last_small_res].it_f;
 
     CHECK(checkpoint2++);
     CHECK(checkpoint5 += new_it_f);
