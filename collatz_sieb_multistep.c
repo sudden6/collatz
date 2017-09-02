@@ -737,43 +737,116 @@ void ms_iter_1(const uint128_t *restrict number, const float it_f, const uint_fa
     }
 }
 
-void ms_iter_1_sse(const uint128_t *restrict number, const float g_it_f)
+// multiplies 64bit vector w_x, with the two lower elements c_d of 32bit vector a_b_c_d
+// truncate result to 64 bit
+__m128i mul64x32_l(__m128i w_x, __m128i a_b_c_d)
 {
-    uint64_t address[2];    // TODO: align on 16byte bound
-    // load res64 into 2 registers
-    __m128d tmp = _mm_load_sd((double const*) (number+0));   // load lower element, zero upper
-    __m128d res64_1_0 = _mm_loadh_pd(tmp,(double const*) (number+1)); // load higher element, copy lower
-    tmp =     _mm_load_sd((double const*) (number+2));   // load lower element, zero upper
-    __m128d res64_3_2 = _mm_loadh_pd(tmp,(double const*) (number+1)); // load higher element, copy lower
+    __m128i ax1_ax0_ay1_ay0 = w_x;
+    __m128i i_i_bx_by = a_b_c_d;
 
+    // i means ignored, q means zeroed
+
+    __m128i i_ax1_i_ay1 = _mm_shuffle_epi32(ax1_ax0_ay1_ay0, _MM_SHUFFLE(3, 3, 1, 1));
+    __m128i bx_bx_by_by = _mm_shuffle_epi32(i_i_bx_by, _MM_SHUFFLE(1, 1, 0, 0));
+
+    __m128i axc_ax0_ayc_ay0 = _mm_mul_epu32(ax1_ax0_ay1_ay0, bx_bx_by_by);
+    i_ax1_i_ay1 = _mm_mul_epu32(i_ax1_i_ay1, bx_bx_by_by);
+
+    __m128i ax1_q_ay1_q = _mm_slli_epi64(i_ax1_i_ay1, 32);
+
+    return _mm_add_epi64(axc_ax0_ayc_ay0, ax1_q_ay1_q);
+}
+
+// multiplies 64bit vector w_x, with the two higher elements a_b of 32bit vector a_b_c_d
+// truncate result to 64 bit
+__m128i mul64x32_h(__m128i w_x, __m128i a_b_c_d)
+{
+    __m128i ax1_ax0_ay1_ay0 = w_x;
+    __m128i bx_by_i_i = a_b_c_d;
+
+    // i means ignored, q means zeroed
+
+    __m128i i_ax1_i_ay1 = _mm_shuffle_epi32(ax1_ax0_ay1_ay0, _MM_SHUFFLE(3, 3, 1, 1));
+    __m128i bx_bx_by_by = _mm_shuffle_epi32(bx_by_i_i, _MM_SHUFFLE(3, 3, 2, 2));
+
+    __m128i axc_ax0_ayc_ay0 = _mm_mul_epu32(ax1_ax0_ay1_ay0, bx_bx_by_by);
+    i_ax1_i_ay1 = _mm_mul_epu32(i_ax1_i_ay1, bx_bx_by_by);
+
+    __m128i ax1_q_ay1_q = _mm_slli_epi64(i_ax1_i_ay1, 32);
+
+    return _mm_add_epi64(axc_ax0_ayc_ay0, ax1_q_ay1_q);
+}
+
+// adds 64bit vector w_x, with the two higher elements a_b of 32bit vector a_b_c_d
+// truncate result to 64 bit
+__m128i add64_32_h(__m128i w_x, __m128i a_b_c_d)
+{
+    __m128i q_v4 = _mm_set1_epi32(0);   // create zero vector
+    __m128i q_a_q_b = _mm_unpackhi_epi32(a_b_c_d, q_v4);
+    return _mm_add_epi64(w_x, q_a_q_b);
+}
+
+// adds 64bit vector w_x, with the two lower elements c_d of 32bit vector a_b_c_d
+// truncate result to 64 bit
+__m128i add64_32_l(__m128i w_x, __m128i a_b_c_d)
+{
+    __m128i q_v4 = _mm_set1_epi32(0);   // create zero vector
+    __m128i q_c_q_d = _mm_unpacklo_epi32(a_b_c_d, q_v4);
+    return _mm_add_epi64(w_x, q_c_q_d);
+}
+
+void update_small_res_v(const __m128i *restrict res64_w_x, const __m128i *restrict res64_y_z,
+                        __m128i *restrict small_w_x, __m128i *restrict small_y_z)
+{
     // compute small_res
-    uint32_t mask = ((1 << ms_depth) - 1);   // mask for and
-    __m128d mask_twice = _mm_load1_pd((double const*) &mask);// load mask
-    __m128i res64_1_0_and = _mm_castpd_si128(_mm_and_pd(res64_1_0, mask_twice));// apply mask
-    __m128i res64_3_2_and = _mm_castpd_si128(_mm_and_pd(res64_3_2, mask_twice));// apply mask
+    __m128i mask_mask = _mm_set1_epi64x((1 << ms_depth) - 1);// load mask
+    *small_y_z = _mm_and_si128(*res64_y_z, mask_mask);// apply mask
+    *small_w_x = _mm_and_si128(*res64_w_x, mask_mask);// apply mask
+}
 
-    __m128i p_ms_consts_twice = _mm_castpd_si128(_mm_load1_pd((double const*) &(ms_consts[0]))); //load first address of ms_consts struct
-    // shift res64_1_0_and multiply res64_1_0 by the factor 16 to get the offset in bytes from ms_consts
-    __m128i ms_consts_offs_1_0 = _mm_slli_epi64(res64_1_0_and, 16);
-    __m128i ms_consts_offs_3_2 = _mm_slli_epi64(res64_3_2_and, 16);
-    // add to the base address to get the new address
-    ms_consts_offs_1_0 = _mm_add_epi64(ms_consts_offs_1_0, p_ms_consts_twice);
-    ms_consts_offs_3_2 = _mm_add_epi64(ms_consts_offs_3_2, p_ms_consts_twice);
+// load number[0] to res64_z
+// ...
+// load number[3] to res64_w
+void load_res64_v(const uint128_t *restrict number, __m128i *restrict res64_w_x, __m128i *restrict res64_y_z)
+{
+    __m128d q_res64z = _mm_load_sd((double const*) (number+0));   // load lower element, zero upper
+    *res64_y_z = _mm_castpd_si128(_mm_loadh_pd(q_res64z,(double const*) (number+1))); // load higher element, copy lower
+    __m128d q_res64x = _mm_load_sd((double const*) (number+2));   // load lower element, zero upper
+    *res64_w_x = _mm_castpd_si128(_mm_loadh_pd(q_res64x,(double const*) (number+3))); // load higher element, copy lower
+}
+
+
+void fetch_ms_data_v4(const __m128i *restrict smallw_smallx, const __m128i *restrict smally_smallz,
+                     __m128i *restrict it_rest_w_x_y_z,
+                     __m128i *restrict pot3_odd_w_x_y_z,
+                     __m128 *restrict it_f_w_x_y_z,
+                     __m128 *restrict it_minf_w_x_y_z)
+{
+    uint64_t address[4];    // TODO: align on 32byte bound
+
+     //load absolute first address of ms_consts struct
+    __m128i pconsts_pconsts = _mm_castpd_si128(_mm_load1_pd((double const*) &(ms_consts[0])));
+    // multiply res64_1_0 by the factor 16 to get the offset in bytes from ms_consts
+    __m128i offy_offz = _mm_slli_epi64(*smally_smallz, 16);
+    __m128i offw_offx = _mm_slli_epi64(*smallw_smallx, 16);
+    // add to the base address to get the new address, contains now an absolute 64bit memory address
+    __m128i pdatay_pdataz = _mm_add_epi64(offy_offz, pconsts_pconsts);
+    __m128i pdatax_pdataw = _mm_add_epi64(offw_offx, pconsts_pconsts);
 
     // hack to load values from memory based on half of a sse register
     // TODO: compare against normal C code
-    _mm_store_pd((double *)address, _mm_castsi128_pd(ms_consts_offs_1_0));
-    __m128 ms_consts_0 = _mm_load_ps((float const*) address[0]); // load ms_consts_0 with cast
-    __m128 ms_consts_1 = _mm_load_ps((float const*) address[1]); // load ms_consts_1 with cast
+    _mm_store_pd((double *)&(address[0]), _mm_castsi128_pd(pdatay_pdataz));
+    __m128 ms_consts_z = _mm_load_ps((float const*) address[0]); // load ms_consts_0 with cast
+    __m128 ms_consts_y = _mm_load_ps((float const*) address[1]); // load ms_consts_1 with cast
     // hack to load values from memory based on half of a sse register
-    _mm_store_pd((double *)address, _mm_castsi128_pd(ms_consts_offs_3_2));
-    __m128 ms_consts_2 = _mm_load_ps((float const*) address[0]); // load ms_consts_0 with cast
-    __m128 ms_consts_3 = _mm_load_ps((float const*) address[1]); // load ms_consts_1 with cast
+    _mm_store_pd((double *)&(address[2]), _mm_castsi128_pd(pdatax_pdataw));
+    __m128 ms_consts_x = _mm_load_ps((float const*) address[2]); // load ms_consts_0 with cast
+    __m128 ms_consts_w = _mm_load_ps((float const*) address[3]); // load ms_consts_1 with cast
 
     // separate ms_const struct into parts
-    _MM_TRANSPOSE4_PS(ms_consts_0, ms_consts_1, ms_consts_2, ms_consts_3);
+    _MM_TRANSPOSE4_PS(ms_consts_w, ms_consts_x, ms_consts_y, ms_consts_z);
 
-    /*
+    /* layout of the struct
     typedef struct {
         uint32_t it_rest;
         uint32_t pot3_odd;
@@ -782,23 +855,73 @@ void ms_iter_1_sse(const uint128_t *restrict number, const float g_it_f)
     } __attribute__((packed)) ms_consts_t;*/
 
     // rename vars for better readability
-    __m128i it_rest_0_1_2_3 = _mm_castps_si128(ms_consts_0);
-    __m128i pot3_odd = _mm_castps_si128(ms_consts_1);
-    __m128 it_f = ms_consts_2;
-    __m128 it_minf = ms_consts_3;
+    *it_rest_w_x_y_z = _mm_castps_si128(ms_consts_w);
+    *pot3_odd_w_x_y_z = _mm_castps_si128(ms_consts_x);
+    *it_f_w_x_y_z = ms_consts_y;
+    *it_minf_w_x_y_z = ms_consts_z;
+}
 
-    // load g_it_f
-    __m128 g_it_f_v = _mm_load_ps1(&g_it_f);
-
+__m128 load_mark_min_v(const __m128 g_it_f_v4, const __m128 it_minf_w_x_y_z)
+{
     // calculate compare value for mark
-    __m128 cur_minf = _mm_mul_ps(g_it_f_v, it_minf);
+    __m128 cur_minf_w_x_y_z = _mm_mul_ps(g_it_f_v4, it_minf_w_x_y_z);
 
     // load compare value
-    __m128 cmp_minf = _mm_set_ps1(MS_MIN_CHECK_VAL);
+    __m128 cmp_minf_v4 = _mm_set_ps1(MS_MIN_CHECK_VAL);
 
     // compare cur_minf < cmp_minf
-    __m128 mark_min = _mm_cmplt_ps(cur_minf, cmp_minf);
+    return _mm_cmplt_ps(cur_minf_w_x_y_z, cmp_minf_v4);
+}
 
+void update_res64_v( __m128i *restrict res64_w_x, __m128i *restrict res64_y_z,
+                     const __m128i it_rest_w_x_y_z, const __m128i pot3_odd_w_x_y_z)
+{
+    // shift res64 right by ms_depth
+    *res64_y_z = _mm_srli_epi64(*res64_y_z, ms_depth);
+    *res64_w_x = _mm_srli_epi64(*res64_w_x, ms_depth);
+
+    // multiply res64 with pot3_odd
+    *res64_y_z = mul64x32_l(*res64_y_z, pot3_odd_w_x_y_z);
+    *res64_w_x = mul64x32_h(*res64_w_x, pot3_odd_w_x_y_z);
+
+    // add it_rest
+    *res64_y_z = add64_32_l(*res64_y_z, it_rest_w_x_y_z);
+    *res64_w_x = add64_32_l(*res64_w_x, it_rest_w_x_y_z);
+}
+
+void ms_iter_1_sse(const uint128_t *restrict number, const float g_it_f,
+                   __m128i *restrict res64_w_x, __m128i *restrict res64_y_z,
+                   __m128i *restrict smallw_smallx, __m128i *restrict smally_smallz,
+                   __m128  *restrict mark_min_w_x_y_z,
+                   __m128  *restrict new_it_f_w_x_y_z)
+{
+    // vector elements      : w, x, y, z
+    // corresponding indices: 3, 2, 1, 0
+    // 0 lower 32bit, 1 higher 32bit -> for 32bit vectors
+    // a_b -> 64bit vector
+    // a_b_c_d -> 32bit vector
+    //v4 -> all vector elements containt the same values
+    // load res64 into 2 registers
+    // res64 -> r
+    load_res64_v(number, res64_w_x, res64_y_z);
+
+    // compute small_res
+    update_small_res_v(res64_w_x, res64_y_z, smallw_smallx, smally_smallz);
+
+    __m128i c_it_rest, c_pot3_odd;
+    __m128 c_it_f, c_it_minf;
+
+    fetch_ms_data_v4(smallw_smallx, smally_smallz, &c_it_rest, &c_pot3_odd, &c_it_f, &c_it_minf);
+
+    // load g_it_f
+    __m128 g_it_f_v4 = _mm_load_ps1(&g_it_f);
+
+    *mark_min_w_x_y_z = load_mark_min_v(g_it_f_v4, c_it_minf);
+
+    update_res64_v(res64_w_x, res64_y_z, c_it_rest, c_pot3_odd);
+
+    // load new_it_f
+    *new_it_f_w_x_y_z = g_it_f_v4 * c_it_minf;
 
 }
 
