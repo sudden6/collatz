@@ -3,6 +3,11 @@
 #include<stdint.h>
 #include <sys/time.h>
 #include <time.h>
+#include <inttypes.h>
+
+#if defined BOINC
+#include <boinc/boinc_api.h>
+#endif
 
 
 //Maximale Anzahl an Iterationen vor Abbruch (zur Vermeidung einer Endlosschleife)
@@ -39,6 +44,9 @@ uint128_t pot3[64];
 
 #define pot3_32Bit(x) ((uint32_t)(pot3[x]))
 #define pot3_64Bit(x) ((uint64_t)(pot3[x]))
+
+uint_fast32_t little_Endian_offset;
+
 
 // Siebtiefe, bevor einzelne Startzahlen in den übrigbleibenden Restklassen
 // erzuegt werden
@@ -96,6 +104,22 @@ double get_time() {
   struct timeval tp;
   gettimeofday(&tp, NULL);
   return tp.tv_sec + tp.tv_usec / 1000000.0;
+}
+
+uint128_t string_to_uint128_t (const char number_string[])
+{
+    uint128_t number = 0;
+    uint_fast32_t position;
+    uint_fast32_t digit;
+
+    for (position = 0; number_string[position] != 0; position++)
+    {
+        // Ziffer aus ASCII-Zeichen zurückrechnen
+        digit = number_string[position] - 48;
+        number = number * 10 + digit;
+    }
+
+    return number;
 }
 
 // Füllt das 128-Bit-Dreier-Potenz-Array
@@ -193,6 +217,8 @@ unsigned int bitnum(const uint128_t myvalue)
     }
     return erg;
 }
+
+uint128_t last_found_candidate_before_resume = 0;
 
 // Nachrechnen eines Rekords und Ausgabe; nach gonz
 void print_candidate(const uint128_t start)
@@ -1128,9 +1154,9 @@ uint64_t sieve_second_stage (const int nr_it, const uint64_t rest,
 }
 
 // Liest schon abgearbeitete Restklassen aus
-// Gibt 0 zurück, wenn noch kein File "cleared.txt" existierte und also bisher noch
-// keine Restklasse abgearbeitet wurde.
-int resume()
+// Gibt 0 zurück, wenn noch kein File "cleared.txt" existierte und also
+// bisher noch keine Restklasse abgearbeitet wurde.
+uint_fast32_t resume()
 {
     char string1[20];
     char string2[20];
@@ -1142,15 +1168,15 @@ int resume()
     uint64_t credits;
     uint_fast32_t no_of_cand;
 
-    //f_cleared = fopen("cleared.txt","r");
+    f_cleared = fopen("cleared.txt","r");
     if (f_cleared != NULL)
     {
-        int dummy;
-        // Tabellenkopf einlesen
-        dummy = fscanf(f_cleared, "%s %s %s %s\n", string1, string2,
-                                                   string3, string4);
+        int_fast32_t dummy = fscanf(f_cleared, "%s %s %s %s\n", string1,
+                                    string2, string3, string4);
 
-        while ( fscanf(f_cleared, "%u %u %llu %u\n", &i, &rest, &credits,
+        if (dummy != 4) return 2; // Fehler beim Einlesen
+
+        while ( fscanf(f_cleared, "%" SCNuFAST32 " %" SCNuFAST32 " %" SCNu64 " %" SCNuFAST32 "\n", &i, &rest, &credits,
                                                      &no_of_cand) >= 2)
         {
             if ((idx_min <= i) && (i < idx_max))
@@ -1167,10 +1193,55 @@ int resume()
     }
 }
 
+// Liest schon gefundene Kandidaten aus
+// Gibt 0 zurück, wenn noch kein File "candidates.txt" existierte und also
+// bisher noch kein Kandidat gefunden wurde. Andernfalls wird der zuletzt
+// gefundene Kandidat in der globalen Variable mit dem Namen
+// last_found_candidate_before_resume abgespeichert, damit gegen diese beim
+// Finden eines neuen Kandidaten abgeglichen werden, und so vermieden werden
+// kann, dass nach einem Neustart des Programms der gleiche Kandidat ein
+// zweites mal als "neu" gefunden wird.
+uint_fast32_t findlastfoundcandidate()
+{
+    f_candidate =fopen("candidates.txt", "r");
+    if (f_candidate == NULL) return 0;
+
+    char Start_string[40];
+    char Record_string[80];
+    char Bit_string[10];
+    char No_ResCl_string[10];
+
+    int_fast32_t dummy = fscanf(f_candidate, "%s %s %s %s\n",
+                                Start_string, Record_string,
+                                Bit_string, No_ResCl_string);
+
+    if (dummy != 4) return 2; // Fehler beim Einlesen
+
+    int_fast32_t no_of_read_args;
+    uint_fast32_t read_lines = 0;
+
+    //Finde letzte Zeile in Datei candidates.txt
+    do
+    {
+        no_of_read_args = fscanf(f_candidate, "%s %s %s %s\n", Start_string,
+                                 Record_string, Bit_string, No_ResCl_string);
+        read_lines++;
+    } while ((no_of_read_args == 4)
+             || ((no_of_read_args >= 1) && (Start_string[0] == '*')));
+
+    if (read_lines > 1) // mindestens ein Kandidat gelesen
+    {
+        last_found_candidate_before_resume = string_to_uint128_t(Start_string);
+    }
+
+    fclose(f_candidate);
+    return 1;
+}
+
 //Führt Initialisierung des Siebs aus
 void init()
 {
-    int cleared_file_exists = resume();
+    uint_fast32_t cleared_file_exists = resume();
 
     f_cleared = fopen("cleared.txt","a");
     if (!cleared_file_exists)
@@ -1179,14 +1250,13 @@ void init()
         fflush(f_cleared);
     }
 
-    f_candidate =fopen("candidates.txt", "r");
-    int candidate_file_exists = (f_candidate != NULL);
-    if (candidate_file_exists) fclose(f_candidate);
+    uint_fast32_t candidate_file_exists = findlastfoundcandidate();
 
     f_candidate =fopen("candidates.txt", "a");
     if (!candidate_file_exists)
     {
-        fprintf(f_candidate, "               Start                                  Record");
+        fprintf(f_candidate, "               Start");
+        fprintf(f_candidate, "                                  Record");
         fprintf(f_candidate, " Bit No_ResCl\n");
         fflush(f_candidate);
     }
@@ -1199,7 +1269,8 @@ void init()
     // 2^1 * k + 1 --> 3^1 * k + 2
     sieve_first_stage(1, 1, 2, 1.5, 1);
 
-    // Mehr Restklassen als restcnt_it32 gibt es nicht --> idx_max nach oben dadurch abschneiden
+    // Mehr Restklassen als restcnt_it32 gibt es nicht
+    // --> idx_max nach oben dadurch abschneiden
     if (idx_max > restcnt_it32)
     {
         idx_max = restcnt_it32;
@@ -1210,6 +1281,10 @@ void init()
 
     printf("\nSieve initialized\n");
 
+    //Berechne Endiness-Offset für gezielten Speicherzugriff
+    uint128_t dummy = 1;
+    uint64_t* first_subword = (uint64_t*) &dummy;
+    little_Endian_offset = 1 - *first_subword;
 }
 
 
@@ -1220,7 +1295,7 @@ int worktodo()
     idx_min = 0;
     idx_max = 0;
 
-    if (fscanf(f_worktodo, "%u %u ", &idx_min, &idx_max) != 2) return 0;
+    if (fscanf(f_worktodo, "%" SCNuFAST32 " %" SCNuFAST32 " ", &idx_min, &idx_max) != 2) return 0;
 
     //if (idx_max > restcnt_it32) idx_max = restcnt_it32;
     if (idx_min > idx_max) idx_min = idx_max;
@@ -1232,6 +1307,9 @@ int worktodo()
 int main()
 {
     // Initialisierungen
+#if defined BOINC
+    boinc_init();
+#endif
     init_potarray();
     init_multistep();
 
@@ -1243,11 +1321,13 @@ int main()
         printf("\n File 'worktodo.txt' is missing! \n\n");
         printf("Every line in this file consists of two numbers:\n");
         printf("<No. of first Residue Class> <No. of last+1 Residue Class>\n\n");
-
+#if defined BOINC
+        boinc_finish(1);
+#else
         printf("press enter to exit.\n");
         getchar();
-
         return 1;
+#endif
     }
 
     while (worktodo()) // Solang zeilenweise je eine Arbeitsaufgabe eingelesen werden kann
@@ -1267,11 +1347,14 @@ int main()
         if ((reste_array == NULL) || (it32_rest == NULL) || (it32_odd == NULL) || (cleared_res == NULL))
         {
             printf("Error while allocating memory!\n\n");
-
+#if defined BOINC
+            boinc_finish(1);
+#else
             printf("press enter to exit.\n");
             getchar();
 
             return 1;
+#endif
         }
 
 
@@ -1290,6 +1373,9 @@ int main()
         shared(rescnt) schedule(dynamic)
         for (i = 0; i < idx_max - idx_min; i++)
         {
+#if defined BOINC
+            boinc_fraction_done((double) i/(idx_max-idx_min));
+#endif
             if (!cleared_res[i])
             { // Nur, wenn Rest noch nicht abgearbeitet
                 no_found_candidates = 0;
@@ -1304,6 +1390,9 @@ int main()
                     fprintf(f_cleared, "%8u     %10u %15llu %5u\n", i+idx_min, reste_array[i], credits,
                                                                     no_found_candidates);
                     fflush(f_cleared);
+#if defined BOINC
+                    boinc_checkpoint_completed();
+#endif
                 }
             }
         }
@@ -1328,8 +1417,9 @@ int main()
 
     printf("chk1: %lu chk2: %lu chk3: %lu chk4: %lu chk5: %f\n", checkpoint1, checkpoint2, checkpoint3, checkpoint4, checkpoint5);
 
-    //printf("press enter to exit.\n");
-    //getchar();
-
+#if defined BOINC
+    boinc_finish(0);
+#else
     return 0;
+#endif
 }
