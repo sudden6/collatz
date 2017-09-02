@@ -763,12 +763,12 @@ void ms_iter_1_sse(const uint128_t *restrict number, const float g_it_f)
     // hack to load values from memory based on half of a sse register
     // TODO: compare against normal C code
     _mm_store_pd((double *)address, _mm_castsi128_pd(ms_consts_offs_1_0));
-    __m128i ms_consts_0 = _mm_load_si128((__m128i const*) address[0]); // load ms_consts_0 with cast
-    __m128i ms_consts_1 = _mm_load_si128((__m128i const*) address[1]); // load ms_consts_1 with cast
+    __m128 ms_consts_0 = _mm_load_ps((float const*) address[0]); // load ms_consts_0 with cast
+    __m128 ms_consts_1 = _mm_load_ps((float const*) address[1]); // load ms_consts_1 with cast
     // hack to load values from memory based on half of a sse register
     _mm_store_pd((double *)address, _mm_castsi128_pd(ms_consts_offs_3_2));
-    __m128i ms_consts_2 = _mm_load_si128((__m128i const*) address[0]); // load ms_consts_0 with cast
-    __m128i ms_consts_3 = _mm_load_si128((__m128i const*) address[1]); // load ms_consts_1 with cast
+    __m128 ms_consts_2 = _mm_load_ps((float const*) address[0]); // load ms_consts_0 with cast
+    __m128 ms_consts_3 = _mm_load_ps((float const*) address[1]); // load ms_consts_1 with cast
 
     // separate ms_const struct into parts
     _MM_TRANSPOSE4_PS(ms_consts_0, ms_consts_1, ms_consts_2, ms_consts_3);
@@ -782,8 +782,8 @@ void ms_iter_1_sse(const uint128_t *restrict number, const float g_it_f)
     } __attribute__((packed)) ms_consts_t;*/
 
     // rename vars for better readability
-    __m128i it_rest_0_1_2_3 = ms_consts_0;
-    __m128i pot3_odd = ms_consts_1;
+    __m128i it_rest_0_1_2_3 = _mm_castps_si128(ms_consts_0);
+    __m128i pot3_odd = _mm_castps_si128(ms_consts_1);
     __m128 it_f = ms_consts_2;
     __m128 it_minf = ms_consts_3;
 
