@@ -566,7 +566,6 @@ void recalc_128(const uint128_t *restrict number, uint128_t *restrict new_nr)
 uint64_t multistep(const uint128_t start, const uint128_t number,
                         const float it_f, const uint_fast32_t nr_it)
 {
-    CHECK(checkpoint3++);
     uint64_t res = (uint64_t) number;
     float new_it_f = it_f;
     uint64_t res64 = res;
@@ -646,6 +645,7 @@ uint64_t multistep(const uint128_t start, const uint128_t number,
 
     uint128_t new_nr;
     recalc_128(&number, &new_nr);
+    CHECK(checkpoint3++);
 
     return (1 + multistep(start, new_nr, new_it_f, nr_it + 6 * ms_depth));
 
@@ -849,10 +849,10 @@ uint64_t first_multistep_4_6(const uint128_t start, const uint128_t number,
 
     CHECK(checkpoint2++);
     CHECK(checkpoint5 += new_it_f);
-    CHECK(checkpoint4 += number);
 
     uint128_t new_nr;
     recalc_128(&number, &new_nr);
+    CHECK(checkpoint4 += new_nr);
 
     return multistep(start, new_nr, new_it_f, nr_it + 6 * ms_depth);
 }
@@ -1336,7 +1336,7 @@ int main()
         unsigned int size = idx_max - idx_min;
 
         //Speicher-Allokation für Ausgabe nach erstem Siebschritt
-        reste_array = malloc(size * sizeof(uint32_t));
+        reste_array = malloc(size * sizeof(uint_fast32_t));
         it32_rest   = malloc(size * sizeof(uint64_t));
         it32_odd    = malloc(size * sizeof(uint32_t));
         cleared_res = calloc(size,  sizeof(uint32_t));
