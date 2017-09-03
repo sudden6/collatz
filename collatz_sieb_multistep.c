@@ -36,8 +36,8 @@ uint64_t checkpoint4 = 0;   // checks the sum of all res64 values after 3 multis
 double checkpoint5 = 0.0;
 
 // globale Variablen für Start und Ende des Bereichs der zu bearbeitenden Reste
-unsigned int idx_min;
-unsigned int idx_max;
+uint_fast32_t idx_min;
+uint_fast32_t idx_max;
 
 // vorberechnete Zweier- und Dreier-Potenzen
 uint128_t pot3[64];
@@ -80,7 +80,7 @@ uint_fast32_t little_Endian_offset;
 // http://www.ams.org/journals/mcom/1999-68-225/S0025-5718-99-01031-5/S0025-5718-99-01031-5.pdf
 // Seite 6/14 (Tabelle 1)
 
-uint32_t * reste_array;
+uint_fast32_t * reste_array;
 uint64_t * it32_rest;
 uint32_t * it32_odd;
 uint32_t * cleared_res;
@@ -88,7 +88,7 @@ uint32_t * cleared_res;
 // Anzahl übriger Restklassen nach sieve_depth_first Iterationen
 uint64_t restcnt_it32;
 // Anzahl in einer Restklasse gefundener Kandidaten
-unsigned int no_found_candidates;
+uint_fast32_t no_found_candidates;
 
 #define ms_depth 10 // 9 <= ms_depth <= 10
 
@@ -141,7 +141,7 @@ int nr_residue_class(const uint128_t start)
 {
     uint_fast32_t startres32 = start & UINT32_MAX;
 
-    int i;
+    unsigned int i;
     for (i = 0; i < idx_max-idx_min; i++)
     {
         if (reste_array[i] == startres32)
@@ -379,7 +379,6 @@ void init_multistep()
     double max_f;
     double it_f;
     double cormin;
-    unsigned int nr_it_max;
 
     unsigned int rest;
     for (rest = 0; rest < (1 << ms_depth); rest++)
@@ -387,7 +386,6 @@ void init_multistep()
         min_f = 1.0;
         max_f = 1.0;
         it_f  = 1.0;
-        nr_it_max = 0;
 
         odd = 0;
         it_rest = rest;
@@ -406,7 +404,6 @@ void init_multistep()
                 if (it_f > max_f)
                 {
                     max_f = it_f;
-                    nr_it_max = it;
                 }
             }
             cormin = it_f * corfactor(it_rest, odd, 0);
@@ -422,9 +419,9 @@ void init_multistep()
     }
 }
 
-#define MS_MAX_CHECK_VAL    (1e16)
-#define MS_MIN_CHECK_VAL    ((float)(0.98))
-#define MS_DECIDE_VAL       (1e09)
+#define MS_MAX_CHECK_VAL    ((float)1e16)
+#define MS_MIN_CHECK_VAL    ((float)0.98)
+#define MS_DECIDE_VAL       ((float)1e09)
 
 void ms_mark_min(uint_fast32_t *restrict last_small_res, uint8_t *restrict mark,
                  uint64_t *restrict res64, float *restrict new_it_f)
@@ -566,7 +563,7 @@ void recalc_128(const uint128_t *restrict number, uint128_t *restrict new_nr)
 // Rekursionsaufruf zu starten. Dies geschieht in zwei Etappen, in denen je 3 * ms_depth
 // Iterationen zusammengefasst und gemeinsam berechnet werden.
 
-unsigned int multistep(const uint128_t start, const uint128_t number,
+uint64_t multistep(const uint128_t start, const uint128_t number,
                         const float it_f, const uint_fast32_t nr_it)
 {
     CHECK(checkpoint3++);
@@ -662,7 +659,7 @@ unsigned int multistep(const uint128_t start, const uint128_t number,
 
 }
 
-unsigned int first_multistep_4_6(const uint128_t start, const uint128_t number,
+uint64_t first_multistep_4_6(const uint128_t start, const uint128_t number,
                                 const float it_f, const uint_fast32_t nr_it, uint64_t res64);
 
 #define SMALL_RES_T uint32_t
@@ -790,10 +787,10 @@ void ms_iter_3(const uint_fast32_t cand_cnt)
 }
 
 //Erster Multistep ohne Maximums-Prüfung in den ersten 30 Iterationen; nach Amateur
-unsigned int first_multistep_parallel(const uint128_t*restrict start, const uint128_t*restrict number,
+uint64_t first_multistep_parallel(const uint128_t*restrict start, const uint128_t*restrict number,
                                 const float it_f, const uint_fast32_t nr_it, const uint_fast32_t parallel_count, const uint_fast32_t cand_cnt)
 {
-    unsigned int credits = 1;
+    uint64_t credits = cand_cnt;
 
 
     ms_iter_1(number, it_f, parallel_count);
@@ -817,7 +814,7 @@ unsigned int first_multistep_parallel(const uint128_t*restrict start, const uint
 
 
 //Erster Multistep ohne Maximums-Prüfung in den ersten 30 Iterationen; nach Amateur
-unsigned int first_multistep_4_6(const uint128_t start, const uint128_t number,
+uint64_t first_multistep_4_6(const uint128_t start, const uint128_t number,
                                 const float it_f, const uint_fast32_t nr_it, const uint64_t g_res64)
 {
     float new_it_f = it_f;
@@ -835,7 +832,7 @@ unsigned int first_multistep_4_6(const uint128_t start, const uint128_t number,
         ms_mark_min(&last_small_res, &mark, &res64, &new_it_f);
         if (mark)
         {
-            return 1;
+            return 0;
         }
     }
     else
@@ -844,7 +841,7 @@ unsigned int first_multistep_4_6(const uint128_t start, const uint128_t number,
         if (mark) // Kandidat gefunden, nun genaue Nachrechnung, daher hier
         {				  // keine Fortführung nötig
             print_candidate(start);
-            return 1;
+            return 0;
         }
     }
 
@@ -857,7 +854,7 @@ unsigned int first_multistep_4_6(const uint128_t start, const uint128_t number,
     uint128_t new_nr;
     recalc_128(&number, &new_nr);
 
-    return (1 + multistep(start, new_nr, new_it_f, nr_it + 6 * ms_depth));
+    return multistep(start, new_nr, new_it_f, nr_it + 6 * ms_depth);
 }
 // Siebt Restklassen bis Iteration sieve_depth_first (32) vor und speichert die
 // Ergebnisse der übrigbleibenden Restklassen in den folgenden globalen Arrays:
@@ -958,12 +955,12 @@ const uint128_t nine_times_pot2_sieve_depth =
 uint128_t start_arr[MAX_NO_OF_NUMBERS+MAX_PARALLEL_FACTOR];
 uint128_t it_arr[MAX_NO_OF_NUMBERS+MAX_PARALLEL_FACTOR];
 
-unsigned int sieve_third_stage (const uint64_t nr_it, const uint64_t rest,
+uint64_t sieve_third_stage (const uint64_t nr_it, const uint64_t rest,
                                 const uint128_t it_rest,
                                 const double it_f, const uint64_t odd)
 {
     // Zählt, wie oft in den Multisteps die teuren 128-Bit-Nachrechnungen durchgeführt werden
-    unsigned int credits = 0;
+    uint64_t credits = 0;
 
     if (nr_it >= SIEVE_DEPTH)
     {
@@ -1011,7 +1008,7 @@ unsigned int sieve_third_stage (const uint64_t nr_it, const uint64_t rest,
                 }
 
 #ifdef INNER_LOOP_OUTPUT
-                first_multistep_parallel(start_arr, it_arr, it_f, SIEVE_DEPTH, ms_start_count);
+                credits += first_multistep_parallel(start_arr, it_arr, it_f, SIEVE_DEPTH, ms_start_count);
 #endif
             }
 
@@ -1023,7 +1020,7 @@ unsigned int sieve_third_stage (const uint64_t nr_it, const uint64_t rest,
         for(uint64_t i = 0; i < ms_start_count; i += MAX_PARALLEL_FACTOR)
         {
             uint_fast32_t count = ms_start_count - i >= MAX_PARALLEL_FACTOR ? MAX_PARALLEL_FACTOR : ms_start_count - i;
-            first_multistep_parallel(&(start_arr[i]), &(it_arr[i]), new_it_f, SIEVE_DEPTH, MAX_PARALLEL_FACTOR, count);
+            credits += first_multistep_parallel(&(start_arr[i]), &(it_arr[i]), new_it_f, SIEVE_DEPTH, MAX_PARALLEL_FACTOR, count);
         }
 #endif
     }
@@ -1333,7 +1330,7 @@ int main()
     while (worktodo()) // Solang zeilenweise je eine Arbeitsaufgabe eingelesen werden kann
     {
         uint_fast32_t i;
-        unsigned int rescnt = 0;
+        uint_fast32_t rescnt = 0;
 
         // Anzahl in diesem Durchlauf zu untersuchender Restklassen
         unsigned int size = idx_max - idx_min;
@@ -1363,7 +1360,8 @@ int main()
 
         uint64_t credits;
 
-        printf("Test of Residue Classes No. %d -- %d\n\n",idx_min, idx_max);
+        printf("Test of Residue Classes No. %" PRIuFAST32, idx_min);
+        printf(" -- %" PRIuFAST32 "\n\n", idx_max);
         double start_time = get_time();
 
         // Möglichkeit zur Parallelisierung
@@ -1386,9 +1384,13 @@ int main()
                 #pragma omp critical
                 {
                     rescnt++;
-                    printf("%4u: Residue Class No. %8u is done. %fs\n", rescnt, i + idx_min, get_time() - start_time);
-                    fprintf(f_cleared, "%8u     %10u %15llu %5u\n", i+idx_min, reste_array[i], credits,
-                                                                    no_found_candidates);
+                    printf("%4" PRIuFAST32 ": Residue Class No. ",rescnt);
+                    printf(" %8" PRIuFAST32 " is done. %fs\n",i+idx_min, get_time() - start_time);
+
+                    fprintf(f_cleared, "%8" PRIuFAST32 ,i+idx_min);
+                    fprintf(f_cleared, "     %10" PRIuFAST32, reste_array[i]);
+                    fprintf(f_cleared, " %15" PRIu64, credits);
+                    fprintf(f_cleared, " %5" PRIuFAST32 "\n", no_found_candidates);
                     fflush(f_cleared);
 #if defined BOINC
                     boinc_checkpoint_completed();
