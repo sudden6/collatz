@@ -126,6 +126,56 @@ uint128_t string_to_uint128_t (const char number_string[])
     return number;
 }
 
+void uint256_t_to_string(uint256_t number, char* string, uint_fast32_t* length)
+{
+    uint_fast32_t i = 0;
+    uint_fast32_t digits[80];
+    do
+    {
+        digits[i] = mod10(number);
+        number = div10(number);
+        i++;
+    } while (!is_zero(number));
+    *length = i;
+
+    for (i=0; i < *length; i++)
+    {   // Ziffern gleich als ASCII-Zeichen speichern
+        string[i] = 48 + digits[*length - 1 - i];
+    }
+
+    string[i] = 0;
+}
+
+//Bildschirmausgabe von number
+void printf_256(const uint256_t number)
+{
+    char string[80];
+    uint_fast32_t length = 80;
+
+    uint256_t_to_string(number, string, &length);
+
+    printf("%s", string);
+}
+
+// Ausgabe int256 in Datei im Dezimalformat nach gonz
+// mindigits: Minimale Stellenanzahl für rechtsbündige
+// Ausrichtung.
+void fprintf_256( uint256_t number, uint_fast32_t mindigits)
+{
+    char string[80];
+    uint_fast32_t length = 80;
+
+    uint256_t_to_string(number, string, &length);
+
+    uint_fast32_t loop;
+    for (loop=mindigits-1; loop >length-1; loop--)
+    {
+        fprintf(f_candidate," ");
+    }
+
+    fprintf(f_candidate,"%s", string);
+}
+
 // Füllt das 128-Bit-Dreier-Potenz-Array
 void init_potarray()
 {
@@ -155,73 +205,6 @@ int nr_residue_class(const uint128_t start)
     return -1;
 }
 
-
-// Bidschirm-Ausgabe int128 im Dezimalformat
-// jeweils 6 Ziffern durch Kommata getrennt
-void printf_128(uint128_t number)
-{
-    int digit[42];
-    int cnt = 0;
-    int loop;
-
-    while (number>0)
-    {
-        digit[cnt]=number%10;
-        number=number/10;
-        cnt++;
-    }
-
-    for (loop=cnt-1;loop>=0;loop--)
-    {
-        printf("%i",digit[loop]);
-        if ( (loop%6==0) && (loop>0) )
-        printf(",");
-    }
-}
-
-
-// Ausgabe int128 in Datei im Dezimalformat nach gonz
-// mindigits: Minimale Stellenanzahl für rechtsbündige
-// Ausrichtung.
-# define mindigits_start  20
-# define mindigits_record 39
-void fprintf_128(uint128_t number, int mindigits)
-{
-    int digit[42];
-    int cnt = 0;
-    int loop;
-
-    while (number>0)
-    {
-        digit[cnt]=number%10;
-        number=number/10;
-        cnt++;
-    }
-
-    for (loop=mindigits-1; loop >cnt-1; loop--)
-    {
-        fprintf(f_candidate," ");
-    }
-
-    for (loop=cnt-1;loop>=0;loop--)
-    {
-        fprintf(f_candidate,"%i",digit[loop]);
-    }
-}
-
-//Berechnet Anzahl Binärstellen; übernommen von gonz
-unsigned int bitnum(const uint128_t myvalue)
-{
-    int erg=1;
-    uint128_t comp=2;
-    while (myvalue>=comp)
-    {
-        erg++;
-        comp=comp<<1;
-    }
-    return erg;
-}
-
 uint128_t last_found_candidate_before_resume = 0;
 
 // Nachrechnen eines Rekords und Ausgabe; nach gonz
@@ -231,7 +214,7 @@ void print_candidate(const uint128_t start)
     no_found_candidates++;
 
     uint256_t start_256 = {0, start};
-    uint256_t myrecord = zero;
+    uint256_t myrecord = ZERO_256_t;
     uint256_t myvalue = start_256;
     uint_fast32_t it = 0;
 

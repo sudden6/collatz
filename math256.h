@@ -3,13 +3,15 @@
 
 #include <inttypes.h>
 
+typedef __uint128_t uint128_t;
+
 typedef struct
 {
     uint128_t hi;
     uint128_t lo;
 } uint256_t;
 
-const uint256_t ZERO_256_t = {0, 0};
+static const uint256_t ZERO_256_t = {0, 0};
 
 uint_fast32_t are_equal(const uint256_t first, const uint256_t second);
 uint_fast32_t is_zero(const uint256_t number);
