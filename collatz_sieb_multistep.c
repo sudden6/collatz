@@ -42,14 +42,11 @@ FILE *f_worktodo;
 uint_fast32_t idx_min;
 uint_fast32_t idx_max;
 
-// vorberechnete Zweier- und Dreier-Potenzen
+// vorberechnete Dreier-Potenzen
 uint128_t pot3[64];
 
 #define pot3_32Bit(x) ((uint32_t)(pot3[x]))
 #define pot3_64Bit(x) ((uint64_t)(pot3[x]))
-
-uint_fast32_t little_Endian_offset;
-
 
 // Siebtiefe, bevor einzelne Startzahlen in den übrigbleibenden Restklassen
 // erzuegt werden
@@ -1295,11 +1292,6 @@ void init()
     }
 
     printf("\nSieve initialized\n");
-
-    //Berechne Endiness-Offset für gezielten Speicherzugriff
-    uint128_t dummy = 1;
-    uint64_t* first_subword = (uint64_t*) &dummy;
-    little_Endian_offset = 1 - *first_subword;
 }
 
 
