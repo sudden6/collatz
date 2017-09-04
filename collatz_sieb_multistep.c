@@ -1,9 +1,10 @@
-#include "stdio.h"
-#include<stdlib.h>
-#include<stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <sys/time.h>
 #include <time.h>
 #include <inttypes.h>
+#include "math256.h"
 
 #if defined BOINC
 #include <boinc/boinc_api.h>
@@ -73,6 +74,9 @@ uint_fast32_t little_Endian_offset;
     // sieve_third_stage auf einmal erzeugt und danach in first_multistep parallel ausgewertet werden
     #define MAX_NO_OF_NUMBERS ((LOOP_END+8)/9)*5
 #endif
+
+#define MINDIGITS_START  20
+#define MINDIGITS_RECORD 39
 
 // Arrays zum Rausschreiben der Restklassen nach sieve_depth_first Iterationen
 // reicht bis sieve_depth_first = 32;
@@ -226,42 +230,49 @@ void print_candidate(const uint128_t start)
     //Anzahl gefundener Kandidaten um 1 hochzählen
     no_found_candidates++;
 
-    uint128_t myrecord=0;
-    uint128_t myvalue=start;
-    unsigned int it = 0;
+    uint256_t start_256 = {0, start};
+    uint256_t myrecord = zero;
+    uint256_t myvalue = start_256;
+    uint_fast32_t it = 0;
 
-   while ((myvalue>=start) && (it < max_nr_of_iterations))
+    while (is_smaller_or_equal(start_256, myvalue) &&
+           (it < max_nr_of_iterations))
     {
-        if (myvalue%2==1)
+        if (mod2(myvalue) == 1)
         {
-            myvalue=3*myvalue+1;
-            if (myvalue>myrecord)
-                myrecord=myvalue;
+            myvalue = mul3p1(myvalue);
+            if (is_smaller(myrecord, myvalue))
+            {
+                myrecord = myvalue;
+            }
         }
         else
-            myvalue = myvalue >> 1;
-
-        it++;
+        {
+            myvalue = div2(myvalue);
+        }
+    it++;
     }
 
-    #pragma omp critical
+#pragma omp critical
     {
         if (it >= max_nr_of_iterations)
         {
             printf("*** Maximum Number of Iterations reached! ***\n");
-            fprintf(f_candidate, "*** Maximum Number of Iterations reached! ***\n");
+            fprintf(f_candidate,
+                    "*** Maximum Number of Iterations reached! ***\n");
         }
 
         printf("** Start=");
-        printf_128(start);
-        printf(" %i Bit Record=",bitnum(start));
-        printf_128(myrecord);
-        printf(" %i Bit\n",bitnum(myrecord));
+        printf_256(start_256);
+        printf(" %" PRIuFAST32 "Bit Record=",bitnum(start_256));
+        printf_256(myrecord);
+        printf(" %" PRIuFAST32 "  Bit\n",bitnum(myrecord));
 
-        fprintf_128(start, mindigits_start);
+        fprintf_256(start_256, MINDIGITS_START);
         fprintf(f_candidate," ");//%2i ",bitnum(start));
-        fprintf_128(myrecord, mindigits_record);
-        fprintf(f_candidate," %3i %8i\n",bitnum(myrecord), nr_residue_class(start));
+        fprintf_256(myrecord, MINDIGITS_RECORD);
+        fprintf(f_candidate," %3lu %8u\n",bitnum(myrecord),
+                                         nr_residue_class(start));
         fflush(f_candidate);
     }
 }

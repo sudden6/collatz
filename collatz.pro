@@ -6,7 +6,8 @@ QMAKE_CFLAGS += -std=c99
 QMAKE_CFLAGS_RELEASE += -Ofast -march=native -mtune=native
 
 SOURCES += \
-    collatz_sieb_multistep.c
+    collatz_sieb_multistep.c \
+    math256.c
 
 DISTFILES += \
     worktodo.txt
@@ -16,4 +17,7 @@ first.depends = $(first) copydata
 export(first.depends)
 export(copydata.commands)
 QMAKE_EXTRA_TARGETS += first copydata
+
+HEADERS += \
+    math256.h
 
