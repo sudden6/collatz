@@ -1096,10 +1096,16 @@ uint64_t sieve_third_stage (const uint64_t nr_it, const uint64_t rest,
     return credits;
 }
 
+#if defined BOINC
+    double amount_of_work_done;
+#endif
+
+// Siebt Reste von Iteration sieve_depth_first bis Iteration
+// sieve_depth_second (32 bis 40)
 // Siebt Reste von Iteration sieve_depth_first bis Iteration sieve_depth_second (32 bis 40)
-uint64_t sieve_second_stage (const int nr_it, const uint64_t rest,
-                                     const uint64_t it_rest,
-                                     const double it_f, const uint_fast32_t odd)
+uint64_t sieve_second_stage (const uint_fast32_t nr_it, const uint64_t rest,
+                             const uint64_t it_rest, const double it_f,
+                             const uint_fast32_t odd)
 {
     uint64_t credits = 0;
 
@@ -1107,58 +1113,57 @@ uint64_t sieve_second_stage (const int nr_it, const uint64_t rest,
     {
         credits += sieve_third_stage(nr_it, rest, it_rest, it_f, odd);
     }
-    else
+    else // Verkürzte Darstellung des Siebs durch sudden6
     {
-        //new_rest = 0 * 2^nr_it + rest
-        uint64_t new_rest = rest;
-        uint64_t new_it_rest = it_rest;
-        double new_it_f = it_f;
-        unsigned int new_odd = odd;
-        int laststepodd = 0;
+        uint64_t  new_rest[2] = {rest, rest + ((uint64_t) 1 << nr_it)};
+        uint64_t new_it_rest[2] = {it_rest, it_rest + pot3_64Bit(odd)};
+        double new_it_f[2] = {it_f, it_f};
+        uint_fast32_t new_odd[2] = {odd, odd};
+        uint_fast32_t laststepodd[2] = {(new_it_rest[0] & 1),
+                                        (new_it_rest[1] & 1)};
+        uint_fast32_t i;
+        for(i = 0; i < 2; i++)
+        {
 
-        if ((new_it_rest & 1) == 0)
-        {
-            new_it_rest = new_it_rest >> 1;
-            new_it_f *= 0.5;
-        }
-        else
-        {
-            new_it_rest += (new_it_rest >> 1) + 1;
-            new_it_f *= 1.5;
-            new_odd++;
-            laststepodd = 1;
-        }
-
-        if (new_it_f * corfactor(new_odd, new_it_rest, laststepodd) > 0.98)
-        {
-            credits += sieve_second_stage(nr_it + 1, new_rest, new_it_rest,
-                                            new_it_f, new_odd);
+            new_it_rest[i] = new_it_rest[i] >> 1;
+            if (laststepodd[i])
+            {
+                new_it_rest[i] += 2 + (new_it_rest[i] << 1);
+            }
+            new_it_f[i] *= 0.5 + laststepodd[i];
+            new_odd[i] += laststepodd[i];
         }
 
-        //new_rest = 1 * 2^nr_it + rest
-        new_rest = rest + (((uint64_t)1) << nr_it); //pot2[nr_it];
-        new_it_rest = it_rest + pot3_64Bit(odd);
-        new_it_f = it_f;
-        new_odd = odd;
-        laststepodd = 0;
+        for(i = 0; i < 2; i++)
+        {
+            if (new_it_f[i] * corfactor(new_odd[i], new_it_rest[i],
+                                        laststepodd[i]) > 0.98)
+            {
+                credits += sieve_second_stage(nr_it + 1, new_rest[i],
+                                              new_it_rest[i], new_it_f[i],
+                                              new_odd[i]);
 
-        if ((new_it_rest & 1) == 0)
-        {
-            new_it_rest = new_it_rest >> 1;
-            new_it_f *= 0.5;
-        }
-        else
-        {
-            new_it_rest += (new_it_rest >> 1) + 1;
-            new_it_f *= 1.5;
-            new_odd++;
-            laststepodd = 1;
-        }
-
-        if (new_it_f * corfactor(new_odd, new_it_rest, laststepodd) > 0.98)
-        {
-            credits += sieve_second_stage(nr_it + 1, new_rest, new_it_rest,
-                                            new_it_f, new_odd);
+#if defined BOINC
+                if (nr_it == sieve_depth_first + 2)
+                {
+                    amount_of_work_done += (1.0
+                                            / ((2 << 2) * (idx_max-idx_min));
+                    boinc_fraction_done(amount_of_work_done);
+                }
+#endif
+            }
+#if defined BOINC
+            else
+            {
+                if (nr_it <= sieve_depth_first + 2)
+                {
+                    amount_of_work_done += (1.0
+                                            / ((2 << (nr_it - sieve_depth_first))
+                                               * (idx_max-idx_min));
+                    boinc_fraction_done(amount_of_work_done);
+                }
+            }
+#endif
         }
     }
 
