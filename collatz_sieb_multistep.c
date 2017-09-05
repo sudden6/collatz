@@ -1144,10 +1144,9 @@ uint64_t sieve_second_stage (const uint_fast32_t nr_it, const uint64_t rest,
                                               new_odd[i]);
 
 #if defined BOINC
-                if (nr_it == sieve_depth_first + 2)
+                if (nr_it == SIEVE_DEPTH_FIRST + 2)
                 {
-                    amount_of_work_done += (1.0
-                                            / ((2 << 2) * (idx_max-idx_min));
+                    amount_of_work_done += 1.0 / ((2 << 2) * (idx_max-idx_min));
                     boinc_fraction_done(amount_of_work_done);
                 }
 #endif
@@ -1155,11 +1154,9 @@ uint64_t sieve_second_stage (const uint_fast32_t nr_it, const uint64_t rest,
 #if defined BOINC
             else
             {
-                if (nr_it <= sieve_depth_first + 2)
+                if (nr_it <= SIEVE_DEPTH_FIRST + 2)
                 {
-                    amount_of_work_done += (1.0
-                                            / ((2 << (nr_it - sieve_depth_first))
-                                               * (idx_max-idx_min));
+                    amount_of_work_done += 1.0 / ((2 << (nr_it - SIEVE_DEPTH_FIRST)) * (idx_max-idx_min));
                     boinc_fraction_done(amount_of_work_done);
                 }
             }
