@@ -24,7 +24,7 @@ uint256_t add(const uint256_t first, const uint256_t second)
 {
     uint256_t sum;
     sum.lo = first.lo + second.lo;
-    int carry = sum.lo < first.lo;
+    unsigned int carry = sum.lo < first.lo;
     sum.hi = first.hi + second.hi + carry;
     return sum;
 }
@@ -39,7 +39,7 @@ uint256_t div2(const uint256_t number)
     uint256_t result;
     uint128_t carry = number.hi & 1;
     result.hi = number.hi >> 1;
-    result.lo = (number.lo >> 1) + (carry >> 127);
+    result.lo = (number.lo >> 1) + (carry << 127);
     return result;
 }
 
